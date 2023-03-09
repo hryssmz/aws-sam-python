@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "pytest single method",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/unit/s3_app/list_buckets",
+        "-o",
+        "pythonpath=. functions/s3_app/list_buckets"
+      ],
+      "justMyCode": true
+    }
+  ]
+}

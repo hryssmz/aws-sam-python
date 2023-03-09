@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "aws-sam-python"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-d2tye91n2q1v"
+s3_prefix = "aws-sam-python"
+region = "ap-northeast-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "EnvironmentType=\"dev\""
+image_repositories = []
