@@ -1,0 +1,306 @@
+openapi: "3.0.1"
+info:
+  title: aws-sam-python-HelloWorldApi
+  version: "1.0"
+servers:
+  - url: https://{restApiId}.execute-api.{region}.amazonaws.com/{basePath}
+    variables:
+      restApiId:
+        default: 0bk1q3deg0
+      region:
+        default: ap-northeast-1
+      basePath:
+        default: dev
+paths:
+  /todos:
+    get:
+      operationId: ListTodos
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListTodosResponse"
+          headers:
+            Access-Control-Allow-Origin:
+              $ref: "#/components/headers/Access-Control-Allow-Origin"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListTodosFunction.Arn}/invocations
+        httpMethod: POST
+    post:
+      operationId: CreateTodo
+      requestBody:
+        description: CreateTodo request body
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTodoRequest"
+      responses:
+        "201":
+          description: 201 Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateTodoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateTodoFunction.Arn}/invocations
+        httpMethod: POST
+  /todos/{id}:
+    parameters:
+      - $ref: "#/components/parameters/todoId"
+    delete:
+      operationId: DeleteTodo
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteTodoFunction.Arn}/invocations
+        httpMethod: POST
+    put:
+      operationId: UpdateTodo
+      requestBody:
+        description: UpdateTodo request body
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTodoRequest"
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateTodoResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateTodoFunction.Arn}/invocations
+        httpMethod: POST
+    get:
+      operationId: GetTodo
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetTodoResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetTodoFunction.Arn}/invocations
+        httpMethod: POST
+components:
+  schemas:
+    EmptyObject:
+      description: Empty object
+      type: object
+      properties: {}
+      example: {}
+    ClientError:
+      description: Client error object
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      example:
+        code: ClientError
+        message: Error message
+    TodoItem:
+      description: Todo item
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - priority
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 3
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
+        name: Shopping
+        description: Buy some eggs
+        priority: 2
+        createdAt: "2023-01-10T13:00:00Z"
+        updatedAt: "2023-01-10T13:00:00Z"
+    ListTodosResponse:
+      description: Response body for GET /todos
+      type: object
+      required:
+        - todos
+      properties:
+        todos:
+          type: array
+          items:
+            $ref: "#/components/schemas/TodoItem"
+      example:
+        todos:
+          - id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
+            name: Shopping
+            description: Buy some eggs
+            priority: 2
+            createdAt: "2023-01-10T13:00:00Z"
+            updatedAt: "2023-01-10T13:00:00Z"
+    CreateTodoRequest:
+      description: Request body for POST /todos
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          default: ""
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 3
+          default: 2
+      example:
+        name: Shopping
+        description: Buy some eggs
+        priority: 2
+    CreateTodoResponse:
+      description: Response body for POST /todos
+      type: object
+      required:
+        - todo
+      properties:
+        todo:
+          $ref: "#/components/schemas/TodoItem"
+      example:
+        todo:
+          id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
+          name: Shopping
+          description: Buy some eggs
+          priority: 2
+          createdAt: "2023-01-10T13:00:00Z"
+          updatedAt: "2023-01-10T13:00:00Z"
+    UpdateTodoRequest:
+      description: Request body for PUT /todos/{id}
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 3
+      example:
+        name: Meeting
+        description: 2023/01/11 10:00 AM at office
+        priority: 1
+    UpdateTodoResponse:
+      description: Response body for PUT /todos/{id}
+      type: object
+      required:
+        - todo
+      properties:
+        todo:
+          $ref: "#/components/schemas/TodoItem"
+      example:
+        todo:
+          id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
+          name: Meeting
+          description: 2023/01/11 10:00 AM at office
+          priority: 1
+          createdAt: "2023-01-10T13:00:00Z"
+          updatedAt: "2023-01-10T16:00:00Z"
+    GetTodoResponse:
+      description: Response body for GET /todos/{id}
+      type: object
+      required:
+        - todo
+      properties:
+        todo:
+          $ref: "#/components/schemas/TodoItem"
+      example:
+        todo:
+          id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
+          name: Shopping
+          description: Buy some eggs
+          priority: 2
+          createdAt: "2023-01-10T13:00:00Z"
+          updatedAt: "2023-01-10T13:00:00Z"
+  parameters:
+    todoId:
+      name: id
+      in: path
+      description: Todo ID
+      required: true
+      schema:
+        type: string
+        example: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
+  headers:
+    Access-Control-Allow-Origin:
+      description: Response header for CORS support
+      schema:
+        type: string
+        example: "*"
+  responses:
+    NoContent:
+      description: 204 No Content
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: "#/components/headers/Access-Control-Allow-Origin"
+    BadRequest:
+      description: 400 Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientError"
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: "#/components/headers/Access-Control-Allow-Origin"
+    NotFound:
+      description: 404 Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientError"
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: "#/components/headers/Access-Control-Allow-Origin"

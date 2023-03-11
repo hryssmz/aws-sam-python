@@ -8,7 +8,17 @@ Parameters:
     Type: String
     Description: API Gateway deployment stage
     Default: dev
-    AllowedValues: [dev, prod]
+    AllowedValues:
+      - dev
+      - prod
+
+  Architecture:
+    Type: String
+    Description: Lambda CPU architecture
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
 
 Globals:
   Function:
@@ -16,100 +26,11 @@ Globals:
     Runtime: python3.9
     Timeout: 10
     Architectures:
-      - x86_64
+      - Ref: Architecture
 
 Resources:
-  # Managed policies
-  ListBucketsFunctionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Managed policy for ListBucketsFunction
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:ListAllMyBuckets
-            Resource:
-              - "*"
-
-  CreateBucketFunctionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Managed policy for CreateBucketFunction
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:CreateBucket
-            Resource:
-              - "*"
-
-  DeleteBucketFunctionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Managed policy for DeleteBucketFunction
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:DeleteBucket
-            Resource:
-              - "*"
-
-  ListObjectsFunctionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Managed policy for ListObjectsFunction
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:ListBucket
-            Resource:
-              - "*"
-
-  CreateObjectFunctionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Managed policy for CreateObjectFunction
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:PutObject
-            Resource:
-              - "*"
-
-  GetObjectFunctionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Managed policy for GetObjectFunction
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:GetObject
-            Resource:
-              - "*"
-
-  DeleteObjectFunctionPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Managed policy for DeleteObjectFunction
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:DeleteObject
-            Resource:
-              - "*"
+  MyBucket:
+    Type: AWS::S3::Bucket
 
   # REST API
   HelloWorldApi:
@@ -126,96 +47,36 @@ Resources:
       DefinitionBody:
         openapi: "3.0.1"
         info:
-          title: sam-helloworld-python-HelloWorldApi
+          title: aws-sam-python-HelloWorldApi
           version: "1.0"
         servers:
           - url: https://{restApiId}.execute-api.{region}.amazonaws.com/{basePath}
             variables:
               restApiId:
-                default: o9kvwjqpqf
+                default: example123
               region:
                 default: ap-northeast-1
               basePath:
                 default: dev
         paths:
-          /buckets:
+          /objects:
             get:
-              operationId: GetBuckets
+              operationId: ListObjects
               responses:
                 "200":
                   description: 200 OK
                   content:
                     application/json:
                       schema:
-                        $ref: "#/components/schemas/GetBucketsResponse"
-                  headers:
-                    Access-Control-Allow-Origin:
-                      $ref: "#/components/headers/Access-Control-Allow-Origin"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListBucketsFunction.Arn}/invocations
-                httpMethod: POST
-          /buckets/{bucket}:
-            parameters:
-              - $ref: "#/components/parameters/bucketParam"
-            put:
-              operationId: PutBucket
-              responses:
-                "201":
-                  description: 201 Created
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/EmptyObject"
-                  headers:
-                    Access-Control-Allow-Origin:
-                      $ref: "#/components/headers/Access-Control-Allow-Origin"
-                "204":
-                  $ref: "#/components/responses/NoContent"
-                "403":
-                  $ref: "#/components/responses/Forbidden"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateBucketFunction.Arn}/invocations
-                httpMethod: POST
-            delete:
-              operationId: DeleteBucket
-              responses:
-                "204":
-                  $ref: "#/components/responses/NoContent"
-                "403":
-                  $ref: "#/components/responses/Forbidden"
-                "404":
-                  $ref: "#/components/responses/NotFound"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteBucketFunction.Arn}/invocations
-                httpMethod: POST
-            get:
-              operationId: GetBucket
-              responses:
-                "200":
-                  description: 200 OK
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/GetBucketResponse"
-                "403":
-                  $ref: "#/components/responses/Forbidden"
-                "404":
-                  $ref: "#/components/responses/NotFound"
+                        $ref: "#/components/schemas/ListObjectsResponse"
               x-amazon-apigateway-integration:
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListObjectsFunction.Arn}/invocations
                 httpMethod: POST
-          /buckets/{bucket}/{key}:
+          /objects/{key}:
             parameters:
-              - $ref: "#/components/parameters/bucketParam"
-              - $ref: "#/components/parameters/keyParam"
+              - $ref: "#/components/parameters/s3Key"
             put:
               operationId: PutObject
               requestBody:
@@ -237,10 +98,6 @@ Resources:
                       $ref: "#/components/headers/Access-Control-Allow-Origin"
                 "400":
                   $ref: "#/components/responses/BadRequest"
-                "403":
-                  $ref: "#/components/responses/Forbidden"
-                "404":
-                  $ref: "#/components/responses/NotFound"
               x-amazon-apigateway-integration:
                 type: aws_proxy
                 uri:
@@ -258,8 +115,6 @@ Resources:
                   headers:
                     Access-Control-Allow-Origin:
                       $ref: "#/components/headers/Access-Control-Allow-Origin"
-                "403":
-                  $ref: "#/components/responses/Forbidden"
                 "404":
                   $ref: "#/components/responses/NotFound"
               x-amazon-apigateway-integration:
@@ -272,10 +127,6 @@ Resources:
               responses:
                 "204":
                   $ref: "#/components/responses/NoContent"
-                "403":
-                  $ref: "#/components/responses/Forbidden"
-                "404":
-                  $ref: "#/components/responses/NotFound"
               x-amazon-apigateway-integration:
                 type: aws_proxy
                 uri:
@@ -302,22 +153,8 @@ Resources:
               example:
                 code: ClientError
                 message: Error message
-            GetBucketsResponse:
-              description: Response body for GET /buckets
-              type: object
-              required:
-                - buckets
-              properties:
-                buckets:
-                  type: array
-                  items:
-                    type: string
-              example:
-                buckets:
-                  - my-bucket
-                  - another-bucket
-            GetBucketResponse:
-              description: Response body for GET /buckets/{bucket}
+            ListObjectsResponse:
+              description: Response body for GET /objects
               type: object
               required:
                 - objects
@@ -331,7 +168,7 @@ Resources:
                   - foo.txt
                   - bar/baz.png
             PutObjectRequest:
-              description: Request body for PUT /buckets/{bucket}/{key}
+              description: Request body for PUT /objects/{key}
               type: object
               required:
                 - content
@@ -341,7 +178,7 @@ Resources:
               example:
                 content: sample file text content
             GetObjectResponse:
-              description: Response body for GET /buckets/{bucket}/{key}
+              description: Response body for GET /objects/{key}
               type: object
               required:
                 - content
@@ -351,15 +188,7 @@ Resources:
               example:
                 content: sample file text content
           parameters:
-            bucketParam:
-              name: bucket
-              in: path
-              description: S3 bucket name
-              required: true
-              schema:
-                type: string
-                example: my-bucket
-            keyParam:
+            s3Key:
               name: key
               in: path
               description: S3 object key
@@ -408,67 +237,21 @@ Resources:
                   $ref: "#/components/headers/Access-Control-Allow-Origin"
 
   # Lambda functions (REST API)
-  ListBucketsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/s3_app/list_buckets
-      Description: List buckets function
-      Policies:
-        - Ref: ListBucketsFunctionPolicy
-      Events:
-        ApiEvent:
-          Type: Api
-          Properties:
-            Method: GET
-            Path: /buckets
-            RestApiId:
-              Ref: HelloWorldApi
-
-  CreateBucketFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/s3_app/create_bucket
-      Description: Create bucket function
-      Policies:
-        - Ref: CreateBucketFunctionPolicy
-      Events:
-        ApiEvent:
-          Type: Api
-          Properties:
-            Method: PUT
-            Path: /buckets/{bucket}
-            RestApiId:
-              Ref: HelloWorldApi
-
-  DeleteBucketFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/s3_app/delete_bucket
-      Description: Delete bucket function
-      Policies:
-        - Ref: DeleteBucketFunctionPolicy
-      Events:
-        ApiEvent:
-          Type: Api
-          Properties:
-            Method: DELETE
-            Path: /buckets/{bucket}
-            RestApiId:
-              Ref: HelloWorldApi
-
   ListObjectsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/s3_app/list_objects
       Description: List objects function
-      Policies:
-        - Ref: ListObjectsFunctionPolicy
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
       Events:
         ApiEvent:
           Type: Api
           Properties:
             Method: GET
-            Path: /buckets/{bucket}
+            Path: /objects
             RestApiId:
               Ref: HelloWorldApi
 
@@ -477,14 +260,16 @@ Resources:
     Properties:
       CodeUri: functions/s3_app/create_object
       Description: Create object function
-      Policies:
-        - Ref: CreateObjectFunctionPolicy
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
       Events:
         ApiEvent:
           Type: Api
           Properties:
             Method: PUT
-            Path: /buckets/{bucket}/{key}
+            Path: /objects/{key}
             RestApiId:
               Ref: HelloWorldApi
 
@@ -493,14 +278,16 @@ Resources:
     Properties:
       CodeUri: functions/s3_app/get_object
       Description: Get object function
-      Policies:
-        - Ref: GetObjectFunctionPolicy
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
       Events:
         ApiEvent:
           Type: Api
           Properties:
             Method: GET
-            Path: /buckets/{bucket}/{key}
+            Path: /objects/{key}
             RestApiId:
               Ref: HelloWorldApi
 
@@ -509,18 +296,67 @@ Resources:
     Properties:
       CodeUri: functions/s3_app/delete_object
       Description: Delete object function
-      Policies:
-        - Ref: DeleteObjectFunctionPolicy
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
       Events:
         ApiEvent:
           Type: Api
           Properties:
             Method: DELETE
-            Path: /buckets/{bucket}/{key}
+            Path: /objects/{key}
             RestApiId:
               Ref: HelloWorldApi
 
+  # Permissions
+  ListObjectsFunctionMyBucketConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: ListObjectsFunction
+      Destination:
+        Id: MyBucket
+      Permissions:
+        - Read
+
+  CreateObjectFunctionMyBucketConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: CreateObjectFunction
+      Destination:
+        Id: MyBucket
+      Permissions:
+        - Write
+
+  GetObjectFunctionMyBucketConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: GetObjectFunction
+      Destination:
+        Id: MyBucket
+      Permissions:
+        - Read
+
+  DeleteObjectFunctionMyBucketConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: DeleteObjectFunction
+      Destination:
+        Id: MyBucket
+      Permissions:
+        - Write
+
 Outputs:
-  HelloWorldApi:
+  HelloWorldApiId:
+    Value:
+      Ref: HelloWorldApi
+  HelloWorldApiUrl:
     Value:
       Fn::Sub: https://${HelloWorldApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${HelloWorldApi.Stage}
+  MyBucketName:
+    Value:
+      Ref: MyBucket

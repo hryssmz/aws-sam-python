@@ -1,49 +1,42 @@
 # s3_app/get_object/app.py
 from http import HTTPStatus
-import json
+import os
 from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
-from utils import APIGW_RESPONSE, create_logger
+from utils import APIGW_RESPONSE, create_logger, json_serialize
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger = create_logger(context.function_name)
-    logger.info("Event: " + json.dumps(event, ensure_ascii=False))
+    logger.info("Event: " + json_serialize(event))
 
-    bucket_name = event["pathParameters"]["bucket"]
     key = event["pathParameters"]["key"]
     s3 = boto3.resource("s3")
-    object = s3.Object(bucket_name, key)
+    object = s3.Object(os.environ["MY_BUCKET"], key)
 
     try:
         res = object.get()
-        content = res["Body"].read().decode("utf-8")
-        response = {
-            **APIGW_RESPONSE,
-            "statusCode": HTTPStatus.OK,
-            "body": json.dumps({"content": content}),
-        }
     except ClientError as exc:
         error = exc.response["Error"]
-        if error["Code"] in ["NoSuchBucket", "NoSuchKey"]:
+        if error["Code"] == "NoSuchKey":
             response = {
                 **APIGW_RESPONSE,
                 "statusCode": HTTPStatus.NOT_FOUND,
-                "body": json.dumps(
+                "body": json_serialize(
                     {"code": error["Code"], "message": error["Message"]}
                 ),
             }
-        elif error["Code"] == "AccessDenied":
-            response = {
-                **APIGW_RESPONSE,
-                "statusCode": HTTPStatus.FORBIDDEN,
-                "body": json.dumps(
-                    {"code": error["Code"], "message": error["Message"]}
-                ),
-            }
+            return response
         else:
             raise exc  # pragma: no cover
+
+    content = res["Body"].read().decode("utf-8")
+    response = {
+        **APIGW_RESPONSE,
+        "statusCode": HTTPStatus.OK,
+        "body": json_serialize({"content": content}),
+    }
 
     return response
