@@ -1,0 +1,190 @@
+openapi: "3.0.1"
+info:
+  title: aws-sam-python
+  version: "1.0"
+servers:
+  - url: https://{restApiId}.execute-api.{region}.amazonaws.com/{basePath}
+    variables:
+      restApiId:
+        default: example123
+      region:
+        default: ap-northeast-1
+      basePath:
+        default: dev
+paths:
+  /objects:
+    get:
+      operationId: ListObjects
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListObjectsResponse"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListObjectsFunction.Arn}/invocations
+        httpMethod: POST
+  /objects/{key}:
+    parameters:
+      - $ref: "#/components/parameters/s3Key"
+    put:
+      operationId: PutObject
+      requestBody:
+        description: PutObject request body
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutObjectRequest"
+      responses:
+        "201":
+          description: 201 Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmptyObject"
+          headers:
+            Access-Control-Allow-Origin:
+              $ref: "#/components/headers/Access-Control-Allow-Origin"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateObjectFunction.Arn}/invocations
+        httpMethod: POST
+    get:
+      operationId: GetObject
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetObjectResponse"
+          headers:
+            Access-Control-Allow-Origin:
+              $ref: "#/components/headers/Access-Control-Allow-Origin"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetObjectFunction.Arn}/invocations
+        httpMethod: POST
+    delete:
+      operationId: DeleteObject
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteObjectFunction.Arn}/invocations
+        httpMethod: POST
+components:
+  schemas:
+    EmptyObject:
+      description: Empty object
+      type: object
+      properties: {}
+      example: {}
+    ClientError:
+      description: Client error object
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      example:
+        code: ClientError
+        message: Error message
+    ListObjectsResponse:
+      description: Response body for GET /objects
+      type: object
+      required:
+        - objects
+      properties:
+        objects:
+          type: array
+          items:
+            type: string
+      example:
+        objects:
+          - foo.txt
+          - bar/baz.png
+    PutObjectRequest:
+      description: Request body for PUT /objects/{key}
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+      example:
+        content: sample file text content
+    GetObjectResponse:
+      description: Response body for GET /objects/{key}
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+      example:
+        content: sample file text content
+  parameters:
+    s3Key:
+      name: key
+      in: path
+      description: S3 object key
+      required: true
+      schema:
+        type: string
+        example: foo.txt
+  headers:
+    Access-Control-Allow-Origin:
+      description: Response header for CORS support
+      schema:
+        type: string
+        example: "*"
+  responses:
+    NoContent:
+      description: 204 No Content
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: "#/components/headers/Access-Control-Allow-Origin"
+    BadRequest:
+      description: 400 Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientError"
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: "#/components/headers/Access-Control-Allow-Origin"
+    Forbidden:
+      description: 403 Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientError"
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: "#/components/headers/Access-Control-Allow-Origin"
+    NotFound:
+      description: 404 Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientError"
+      headers:
+        Access-Control-Allow-Origin:
+          $ref: "#/components/headers/Access-Control-Allow-Origin"

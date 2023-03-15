@@ -6,8 +6,6 @@ phases:
     commands:
       - pip install --upgrade pip
       - pip install --upgrade awscli aws-sam-cli
-      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
-      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
   build:
     commands:
       - sam build
@@ -15,4 +13,5 @@ phases:
 
 artifacts:
   files:
+    - openapi.yaml
     - packaged-template.yaml

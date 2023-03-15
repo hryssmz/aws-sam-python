@@ -1,0 +1,314 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: aws-sam-python CI/CD stack
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+  DeploymentBranch:
+    Type: String
+    Description: CodeCommit branch to deploy
+    Default: main
+
+  CodeBuildImage:
+    Type: String
+    Description: CodeBuild build environment image
+    Default: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+
+  BuildProjectBuildSpecPath:
+    Type: String
+    Description: Build specification path for build project
+    Default: pipeline/buildspec_build.yml
+
+Resources:
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${ProjectName}-artifacts
+
+  Repository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryDescription: My main repository
+      RepositoryName:
+        Ref: ProjectName
+      Triggers:
+        - Name: DeploymentBranchUpdateTrigger
+          DestinationArn:
+            Ref: CodeCommitUpdateTopic
+          Branches:
+            - Ref: DeploymentBranch
+          Events:
+            - updateReference
+
+  CodeBuildExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${ProjectName}-codebuild-execution-policy
+      Description: Execution policy for CodeBuild projects
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CloudWatchLogGroupsAccess
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              - "*"
+          - Sid: ArtifactsBucketObjectsAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - Fn::Sub: ${ArtifactsBucket.Arn}/*
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-codebuild-service-role
+      Description: Service role for CodeBuild
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - Ref: CodeBuildExecutionPolicy
+
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${ProjectName}-build
+      Description: Build project
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image:
+          Ref: CodeBuildImage
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value:
+              Ref: ArtifactsBucket
+          - Name: S3_PREFIX
+            Value:
+              Fn::Sub: ${ProjectName}-build
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec:
+          Ref: BuildProjectBuildSpecPath
+
+  PipelineExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${ProjectName}-pipeline-execution-policy
+      Description: Execution policy for pipeline
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ArtifactsBucketAccess
+            Effect: Allow
+            Action:
+              - s3:GetBucketAcl
+              - s3:GetBucketLocation
+            Resource:
+              - Fn::GetAtt: ArtifactsBucket.Arn
+          - Sid: ArtifactsBucketObjectsAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - Fn::Sub: ${ArtifactsBucket.Arn}/*
+          - Sid: CodeCommitAccess
+            Effect: Allow
+            Action:
+              - codecommit:CancelUploadArchive
+              - codecommit:GetBranch
+              - codecommit:GetCommit
+              - codecommit:GetUploadArchiveStatus
+              - codecommit:UploadArchive
+            Resource:
+              - Fn::GetAtt: Repository.Arn
+          - Sid: CodeBuildAccess
+            Effect: Allow
+            Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+            Resource:
+              - Fn::GetAtt: BuildProject.Arn
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-codepipeline-service-role
+      Description: Service role for CodePipeline
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - Ref: PipelineExecutionPolicy
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name:
+        Ref: ProjectName
+      RoleArn:
+        Fn::GetAtt: CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Location:
+          Ref: ArtifactsBucket
+        Type: S3
+      RestartExecutionOnUpdate: false
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Version: "1"
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+              Configuration:
+                BranchName:
+                  Ref: DeploymentBranch
+                RepositoryName:
+                  Fn::GetAtt: Repository.Name
+                PollForSourceChanges: false
+              OutputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: BuildProject
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: BuildArtifact
+
+  CodeCommitUpdateTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: ${ProjectName}-codecommit-update
+      FifoTopic: false
+
+  StartPipelineFunctionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${ProjectName}-start-pipeline-function-policy
+      Description: Policy for StartPipelineFunction
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: StartPipeline
+            Effect: Allow
+            Action:
+              - codepipeline:StartPipelineExecution
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}
+
+  StartPipelineFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-start-pipeline-function-role
+      Description: Service role for StartPipelineFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: StartPipelineFunctionPolicy
+
+  StartPipelineFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${ProjectName}-start-pipeline
+      Description: Start pipeline function
+      Role:
+        Fn::GetAtt: StartPipelineFunctionRole.Arn
+      Architectures:
+        - arm64
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Environment:
+        Variables:
+          PIPELINE_NAME:
+            Ref: Pipeline
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic:
+              Ref: CodeCommitUpdateTopic
+      InlineCode: |
+        const {
+          CodePipelineClient,
+          StartPipelineExecutionCommand,
+        } = require("@aws-sdk/client-codepipeline");
+
+        exports.handler = async () => {
+          const client = new CodePipelineClient({});
+          const command = new StartPipelineExecutionCommand({
+            name: process.env.PIPELINE_NAME,
+          });
+          const response = await client.send(command);
+          console.log(`Pipeline started: (${response.pipelineExecutionId})`);
+        };
+
+Outputs:
+  ProjectName:
+    Value:
+      Ref: ProjectName
+
+  RepositoryCloneUrlHttp:
+    Value:
+      Fn::GetAtt: Repository.CloneUrlHttp
+
+  RepositoryCloneUrlSsh:
+    Value:
+      Fn::GetAtt: Repository.CloneUrlSsh
