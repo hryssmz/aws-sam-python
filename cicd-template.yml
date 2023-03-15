@@ -18,6 +18,16 @@ Parameters:
     Description: CodeBuild build environment image
     Default: aws/codebuild/amazonlinux2-x86_64-standard:3.0
 
+  PackagedTemplatePath:
+    Type: String
+    Description: Path for the packaged CloudFormation template file
+    Default: packaged-template.yml
+
+  TemplateConfigurationPath:
+    Type: String
+    Description: Path for the CloudFormation template configuration file
+    Default: template-configuration.json
+
 Resources:
   ArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -83,11 +93,11 @@ Resources:
       ManagedPolicyArns:
         - Ref: CodeBuildExecutionPolicy
 
-  CodeBuildProject:
+  BuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name:
-        Fn::Sub: ${ProjectName}
+        Ref: ProjectName
       Description: Build project
       Artifacts:
         Type: CODEPIPELINE
@@ -97,19 +107,38 @@ Resources:
         Image:
           Ref: CodeBuildImage
         EnvironmentVariables:
-          - Name: STACK_NAME
-            Value:
-              Fn::Sub: ${ProjectName}-app
           - Name: S3_BUCKET
             Value:
               Ref: ArtifactsBucket
           - Name: S3_PREFIX
+            Value: codebuild
+          - Name: PACKAGED_TEMPALTE_PATH
             Value:
-              Fn::Sub: codebuild
+              Ref: PackagedTemplatePath
+          - Name: TEMPLATE_CONFIGURATION_PATH
+            Value:
+              Ref: TemplateConfigurationPath
       ServiceRole:
         Fn::GetAtt: CodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
+
+  CloudFormationServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-cloudformation-service-role
+      Description: Service role for CloudFormation
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
 
   PipelineExecutionPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -151,7 +180,7 @@ Resources:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
             Resource:
-              - Fn::GetAtt: CodeBuildProject.Arn
+              - Fn::GetAtt: BuildProject.Arn
 
   CodePipelineServiceRole:
     Type: AWS::IAM::Role
@@ -211,11 +240,31 @@ Resources:
                 Version: 1
               Configuration:
                 ProjectName:
-                  Ref: CodeBuildProject
+                  Ref: BuildProject
               InputArtifacts:
                 - Name: SourceCode
               OutputArtifacts:
                 - Name: BuildArtifacts
+
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName:
+                  Fn::Sub: ${ProjectName}-api
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
+                TemplatePath:
+                  Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
+                TemplateConfiguration:
+                  Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
 
   CodeCommitUpdateTopic:
     Type: AWS::SNS::Topic
