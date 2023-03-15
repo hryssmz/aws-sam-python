@@ -1,4 +1,3 @@
-# codebuild/templates/aws-sam-python-cicd.yml
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: aws-sam-python CI/CD stack
@@ -98,6 +97,9 @@ Resources:
         Image:
           Ref: CodeBuildImage
         EnvironmentVariables:
+          - Name: STACK_NAME
+            Value:
+              Fn::Sub: ${ProjectName}-app
           - Name: S3_BUCKET
             Value:
               Ref: ArtifactsBucket
