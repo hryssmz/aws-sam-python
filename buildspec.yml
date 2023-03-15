@@ -12,4 +12,17 @@ phases:
       - OPENAPI_FILENAME="`md5sum openapi.yml | awk '{print $1}'`.yml"
       - API_DEFINITION_LOCATION="s3://${S3_BUCKET}/openapi/${OPENAPI_FILENAME}"
       - aws s3 cp openapi.yml ${API_DEFINITION_LOCATION}
-      - sam deploy --debug --stack-name ${STACK_NAME} --s3-bucket ${S3_BUCKET} --s3-prefix ${S3_PREFIX} --region ${AWS_REGION} --capabilities CAPABILITY_NAMED_IAM --parameter-overrides ApiDefinitionLocation=${API_DEFINITION_LOCATION}
+      - sam package --s3-bucket ${S3_BUCKET} --s3-prefix ${S3_PREFIX} --region ${AWS_REGION} --output-template-file packaged-template.yml
+      - |
+        cat - <<EOF > template-configuration.json
+        {
+          "Parameters": {
+            "ApiDefinitionLocation": "${API_DEFINITION_LOCATION}"
+          }
+        }
+        EOF
+
+artifacts:
+  files:
+    - packaged-template.yml
+    - template-configuration.json

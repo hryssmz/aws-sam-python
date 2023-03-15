@@ -65,19 +65,6 @@ Resources:
               - s3:PutObject
             Resource:
               - Fn::Sub: ${ArtifactsBucket.Arn}/*
-          - Sid: CloudFormationExecution
-            Effect: Allow
-            Action:
-              - cloudformation:CreateChangeSet
-              - cloudformation:DescribeChangeSet
-              - cloudformation:ExecuteChangeSet
-              - cloudformation:DeleteStack
-              - cloudformation:DescribeStackEvents
-              - cloudformation:DescribeStacks
-              - cloudformation:GetTemplate
-              - cloudformation:GetTemplateSummary
-              - cloudformation:DescribeStackResource
-            Resource: "*"
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -214,9 +201,9 @@ Resources:
                 - Name: SourceCode
               RunOrder: 1
 
-        - Name: Deploy
+        - Name: Build
           Actions:
-            - Name: Deploy
+            - Name: Build
               ActionTypeId:
                 Category: Build
                 Owner: AWS
@@ -227,6 +214,8 @@ Resources:
                   Ref: CodeBuildProject
               InputArtifacts:
                 - Name: SourceCode
+              OutputArtifacts:
+                - Name: BuildArtifacts
 
   CodeCommitUpdateTopic:
     Type: AWS::SNS::Topic
