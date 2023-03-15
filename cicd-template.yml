@@ -174,13 +174,27 @@ Resources:
               - codecommit:UploadArchive
             Resource:
               - Fn::GetAtt: Repository.Arn
-          - Sid: CodeBuildAccess
+          - Sid: CodeBuildExecution
             Effect: Allow
             Action:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
             Resource:
               - Fn::GetAtt: BuildProject.Arn
+          - Sid: CloudFormationExecution
+            Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:UpdateStack
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:SetStackPolicy
+              - cloudformation:ValidateTemplate
+            Resource: "*"
 
   CodePipelineServiceRole:
     Type: AWS::IAM::Role
@@ -245,6 +259,7 @@ Resources:
                 - Name: SourceCode
               OutputArtifacts:
                 - Name: BuildArtifacts
+              RunOrder: 1
 
         - Name: Deploy
           Actions:
@@ -265,6 +280,9 @@ Resources:
                   Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
                 TemplateConfiguration:
                   Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
+              InputArtifacts:
+                - Name: BuildArtifacts
+              RunOrder: 1
 
   CodeCommitUpdateTopic:
     Type: AWS::SNS::Topic
