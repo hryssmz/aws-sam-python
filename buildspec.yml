@@ -3,9 +3,6 @@ phases:
   install:
     runtime-versions:
       python: 3.9
-    commands:
-      - pip install --upgrade pip
-      - pip install --upgrade awscli aws-sam-cli
   build:
     commands:
       - sam build
