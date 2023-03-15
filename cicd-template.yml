@@ -65,6 +65,19 @@ Resources:
               - s3:PutObject
             Resource:
               - Fn::Sub: ${ArtifactsBucket.Arn}/*
+          - Sid: CloudFormationExecution
+            Effect: Allow
+            Action:
+              - cloudformation:CreateChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DescribeStacks
+              - cloudformation:GetTemplate
+              - cloudformation:GetTemplateSummary
+              - cloudformation:DescribeStackResource
+            Resource: "*"
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
