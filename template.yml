@@ -1,0 +1,278 @@
+# s3_app/template.yaml
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Sample SAM App
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+  EnvironmentType:
+    Type: String
+    Description: API Gateway deployment stage
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+
+  Architecture:
+    Type: String
+    Description: Lambda CPU architecture
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
+
+  ApiDefinitionLocation:
+    Type: String
+    Description: S3 URL for OpenAPI definition
+
+Globals:
+  Function:
+    Handler: app.handler
+    Runtime: python3.9
+    Timeout: 10
+    Architectures:
+      - Ref: Architecture
+
+Resources:
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${ProjectName}-mybucket
+
+  # REST API
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Ref: ProjectName
+      Description:
+        Fn::Sub: ${ProjectName} REST API
+      StageName:
+        Ref: EnvironmentType
+      Cors:
+        AllowHeaders: "'*'"
+        AllowMethods: "'*'"
+        AllowOrigin: "'*'"
+      OpenApiVersion: "3.0.1"
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Ref: ApiDefinitionLocation
+
+  # Lambda functions (REST API)
+  ListObjectsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-list-objects-function-role
+      Description: Service role for ListObjectsFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketReadPolicy
+
+  ListObjectsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/s3_app/list_objects
+      FunctionName:
+        Fn::Sub: ${ProjectName}-list-objects
+      Description: List objects function
+      Role:
+        Fn::GetAtt: ListObjectsFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /objects
+            RestApiId:
+              Ref: RestApi
+
+  CreateObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-create-object-function-role
+      Description: Service role for CreateObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketWritePolicy
+
+  CreateObjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/s3_app/create_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-create-object
+      Description: Create object function
+      Role:
+        Fn::GetAtt: CreateObjectFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: PUT
+            Path: /objects/{key}
+            RestApiId:
+              Ref: RestApi
+
+  GetObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-get-object-function-role
+      Description: Service role for GetObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketReadPolicy
+
+  GetObjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/s3_app/get_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-get-object
+      Description: Get object function
+      Role:
+        Fn::GetAtt: GetObjectFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /objects/{key}
+            RestApiId:
+              Ref: RestApi
+
+  DeleteObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-delete-object-function-role
+      Description: Service role for DeleteObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketWritePolicy
+
+  DeleteObjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/s3_app/delete_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-delete-object
+      Description: Delete object function
+      Role:
+        Fn::GetAtt: DeleteObjectFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Ref: MyBucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: DELETE
+            Path: /objects/{key}
+            RestApiId:
+              Ref: RestApi
+
+  # Permissions
+  MyBucketReadPolicy:
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${MyBucket}-read-policy
+      Description: MyBucket read policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: MyBucketReadOnlyAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:GetBucketLocation
+              - s3:GetObjectVersion
+              - s3:GetLifecycleConfiguration
+            Resource:
+              - Fn::GetAtt: MyBucket.Arn
+              - Fn::Sub: ${MyBucket.Arn}/*
+
+  MyBucketWritePolicy:
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${MyBucket}-write-policy
+      Description: MyBucket write policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: MyBucketWriteOnlyAccess
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:PutObjectAcl
+              - s3:PutLifecycleConfiguration
+            Resource:
+              - Fn::GetAtt: MyBucket.Arn
+              - Fn::Sub: ${MyBucket.Arn}/*
+
+Outputs:
+  RestApiId:
+    Value:
+      Ref: RestApi
+  RestApiUrl:
+    Value:
+      Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}
+  MyBucketName:
+    Value:
+      Ref: MyBucket

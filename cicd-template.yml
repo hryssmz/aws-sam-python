@@ -1,3 +1,4 @@
+# codebuild/templates/aws-sam-python-cicd.yml
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: aws-sam-python CI/CD stack
@@ -17,11 +18,6 @@ Parameters:
     Type: String
     Description: CodeBuild build environment image
     Default: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-
-  BuildProjectBuildSpecPath:
-    Type: String
-    Description: Build specification path for build project
-    Default: pipeline/buildspec_build.yml
 
 Resources:
   ArtifactsBucket:
@@ -88,11 +84,11 @@ Resources:
       ManagedPolicyArns:
         - Ref: CodeBuildExecutionPolicy
 
-  BuildProject:
+  CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name:
-        Fn::Sub: ${ProjectName}-build
+        Fn::Sub: ${ProjectName}
       Description: Build project
       Artifacts:
         Type: CODEPIPELINE
@@ -101,20 +97,17 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image:
           Ref: CodeBuildImage
-        PrivilegedMode: true
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value:
               Ref: ArtifactsBucket
           - Name: S3_PREFIX
             Value:
-              Fn::Sub: ${ProjectName}-build
+              Fn::Sub: codebuild
       ServiceRole:
         Fn::GetAtt: CodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec:
-          Ref: BuildProjectBuildSpecPath
 
   PipelineExecutionPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -156,7 +149,7 @@ Resources:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
             Resource:
-              - Fn::GetAtt: BuildProject.Arn
+              - Fn::GetAtt: CodeBuildProject.Arn
 
   CodePipelineServiceRole:
     Type: AWS::IAM::Role
@@ -190,7 +183,7 @@ Resources:
       Stages:
         - Name: Source
           Actions:
-            - Name: SourceAction
+            - Name: Source
               ActionTypeId:
                 Version: "1"
                 Category: Source
@@ -206,9 +199,9 @@ Resources:
                 - Name: SourceCode
               RunOrder: 1
 
-        - Name: Build
+        - Name: Deploy
           Actions:
-            - Name: BuildAction
+            - Name: Deploy
               ActionTypeId:
                 Category: Build
                 Owner: AWS
@@ -216,11 +209,9 @@ Resources:
                 Version: 1
               Configuration:
                 ProjectName:
-                  Ref: BuildProject
+                  Ref: CodeBuildProject
               InputArtifacts:
                 - Name: SourceCode
-              OutputArtifacts:
-                - Name: BuildArtifact
 
   CodeCommitUpdateTopic:
     Type: AWS::SNS::Topic

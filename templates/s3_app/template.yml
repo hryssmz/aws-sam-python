@@ -1,4 +1,4 @@
-# s3_app/template.yaml
+# s3_app/template.yml
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Sample SAM App
