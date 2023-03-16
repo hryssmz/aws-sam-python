@@ -102,6 +102,3 @@ Outputs:
   RestApiUrl:
     Value:
       Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}
-  MyBucketName:
-    Value:
-      Ref: MyBucket
