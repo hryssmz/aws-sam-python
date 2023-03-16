@@ -43,6 +43,7 @@ Resources:
           Branches:
             - Ref: DeploymentBranch
           Events:
+            - createReference
             - updateReference
 
   CodeBuildExecutionPolicy:
