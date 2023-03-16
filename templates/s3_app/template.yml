@@ -3,6 +3,11 @@ Transform: AWS::Serverless-2016-10-31
 Description: Sample SAM App
 
 Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
   EnvironmentType:
     Type: String
     Description: API Gateway deployment stage
@@ -19,6 +24,10 @@ Parameters:
       - arm64
       - x86_64
 
+  ApiDefinitionLocation:
+    Type: String
+    Description: S3 URL for OpenAPI definition
+
 Globals:
   Function:
     Handler: app.handler
@@ -30,12 +39,18 @@ Globals:
 Resources:
   MyBucket:
     Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${ProjectName}-mybucket
 
   # REST API
-  HelloWorldApi:
+  RestApi:
     Type: AWS::Serverless::Api
     Properties:
-      Description: Hello World REST API
+      Name:
+        Ref: ProjectName
+      Description:
+        Fn::Sub: ${ProjectName} REST API
       StageName:
         Ref: EnvironmentType
       Cors:
@@ -44,203 +59,40 @@ Resources:
         AllowOrigin: "'*'"
       OpenApiVersion: "3.0.1"
       DefinitionBody:
-        openapi: "3.0.1"
-        info:
-          title: aws-sam-python-HelloWorldApi
-          version: "1.0"
-        servers:
-          - url: https://{restApiId}.execute-api.{region}.amazonaws.com/{basePath}
-            variables:
-              restApiId:
-                default: example123
-              region:
-                default: ap-northeast-1
-              basePath:
-                default: dev
-        paths:
-          /objects:
-            get:
-              operationId: ListObjects
-              responses:
-                "200":
-                  description: 200 OK
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/ListObjectsResponse"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListObjectsFunction.Arn}/invocations
-                httpMethod: POST
-          /objects/{key}:
-            parameters:
-              - $ref: "#/components/parameters/s3Key"
-            put:
-              operationId: PutObject
-              requestBody:
-                description: PutObject request body
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/PutObjectRequest"
-              responses:
-                "201":
-                  description: 201 Created
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/EmptyObject"
-                  headers:
-                    Access-Control-Allow-Origin:
-                      $ref: "#/components/headers/Access-Control-Allow-Origin"
-                "400":
-                  $ref: "#/components/responses/BadRequest"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateObjectFunction.Arn}/invocations
-                httpMethod: POST
-            get:
-              operationId: GetObject
-              responses:
-                "200":
-                  description: 200 OK
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/GetObjectResponse"
-                  headers:
-                    Access-Control-Allow-Origin:
-                      $ref: "#/components/headers/Access-Control-Allow-Origin"
-                "404":
-                  $ref: "#/components/responses/NotFound"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetObjectFunction.Arn}/invocations
-                httpMethod: POST
-            delete:
-              operationId: DeleteObject
-              responses:
-                "204":
-                  $ref: "#/components/responses/NoContent"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteObjectFunction.Arn}/invocations
-                httpMethod: POST
-        components:
-          schemas:
-            EmptyObject:
-              description: Empty object
-              type: object
-              properties: {}
-              example: {}
-            ClientError:
-              description: Client error object
-              type: object
-              required:
-                - code
-                - message
-              properties:
-                code:
-                  type: string
-                message:
-                  type: string
-              example:
-                code: ClientError
-                message: Error message
-            ListObjectsResponse:
-              description: Response body for GET /objects
-              type: object
-              required:
-                - objects
-              properties:
-                objects:
-                  type: array
-                  items:
-                    type: string
-              example:
-                objects:
-                  - foo.txt
-                  - bar/baz.png
-            PutObjectRequest:
-              description: Request body for PUT /objects/{key}
-              type: object
-              required:
-                - content
-              properties:
-                content:
-                  type: string
-              example:
-                content: sample file text content
-            GetObjectResponse:
-              description: Response body for GET /objects/{key}
-              type: object
-              required:
-                - content
-              properties:
-                content:
-                  type: string
-              example:
-                content: sample file text content
-          parameters:
-            s3Key:
-              name: key
-              in: path
-              description: S3 object key
-              required: true
-              schema:
-                type: string
-                example: foo.txt
-          headers:
-            Access-Control-Allow-Origin:
-              description: Response header for CORS support
-              schema:
-                type: string
-                example: "*"
-          responses:
-            NoContent:
-              description: 204 No Content
-              headers:
-                Access-Control-Allow-Origin:
-                  $ref: "#/components/headers/Access-Control-Allow-Origin"
-            BadRequest:
-              description: 400 Bad Request
-              content:
-                application/json:
-                  schema:
-                    $ref: "#/components/schemas/ClientError"
-              headers:
-                Access-Control-Allow-Origin:
-                  $ref: "#/components/headers/Access-Control-Allow-Origin"
-            Forbidden:
-              description: 403 Forbidden
-              content:
-                application/json:
-                  schema:
-                    $ref: "#/components/schemas/ClientError"
-              headers:
-                Access-Control-Allow-Origin:
-                  $ref: "#/components/headers/Access-Control-Allow-Origin"
-            NotFound:
-              description: 404 Not Found
-              content:
-                application/json:
-                  schema:
-                    $ref: "#/components/schemas/ClientError"
-              headers:
-                Access-Control-Allow-Origin:
-                  $ref: "#/components/headers/Access-Control-Allow-Origin"
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Ref: ApiDefinitionLocation
 
   # Lambda functions (REST API)
+  ListObjectsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-list-objects-function-role
+      Description: Service role for ListObjectsFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketReadPolicy
+
   ListObjectsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/s3_app/list_objects
+      FunctionName:
+        Fn::Sub: ${ProjectName}-list-objects
       Description: List objects function
+      Role:
+        Fn::GetAtt: ListObjectsFunctionRole.Arn
       Environment:
         Variables:
           MY_BUCKET:
@@ -252,13 +104,35 @@ Resources:
             Method: GET
             Path: /objects
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  CreateObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-create-object-function-role
+      Description: Service role for CreateObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketWritePolicy
 
   CreateObjectFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/s3_app/create_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-create-object
       Description: Create object function
+      Role:
+        Fn::GetAtt: CreateObjectFunctionRole.Arn
       Environment:
         Variables:
           MY_BUCKET:
@@ -270,13 +144,35 @@ Resources:
             Method: PUT
             Path: /objects/{key}
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  GetObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-get-object-function-role
+      Description: Service role for GetObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketReadPolicy
 
   GetObjectFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/s3_app/get_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-get-object
       Description: Get object function
+      Role:
+        Fn::GetAtt: GetObjectFunctionRole.Arn
       Environment:
         Variables:
           MY_BUCKET:
@@ -288,13 +184,35 @@ Resources:
             Method: GET
             Path: /objects/{key}
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  DeleteObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-delete-object-function-role
+      Description: Service role for DeleteObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: MyBucketWritePolicy
 
   DeleteObjectFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/s3_app/delete_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-delete-object
       Description: Delete object function
+      Role:
+        Fn::GetAtt: DeleteObjectFunctionRole.Arn
       Environment:
         Variables:
           MY_BUCKET:
@@ -306,56 +224,56 @@ Resources:
             Method: DELETE
             Path: /objects/{key}
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
 
   # Permissions
-  ListObjectsFunctionMyBucketConnector:
-    Type: AWS::Serverless::Connector
+  MyBucketReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      Source:
-        Id: ListObjectsFunction
-      Destination:
-        Id: MyBucket
-      Permissions:
-        - Read
+      ManagedPolicyName:
+        Fn::Sub: ${MyBucket}-read-policy
+      Description: MyBucket read policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: MyBucketReadOnlyAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:GetBucketLocation
+              - s3:GetObjectVersion
+              - s3:GetLifecycleConfiguration
+            Resource:
+              - Fn::GetAtt: MyBucket.Arn
+              - Fn::Sub: ${MyBucket.Arn}/*
 
-  CreateObjectFunctionMyBucketConnector:
-    Type: AWS::Serverless::Connector
+  MyBucketWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      Source:
-        Id: CreateObjectFunction
-      Destination:
-        Id: MyBucket
-      Permissions:
-        - Write
-
-  GetObjectFunctionMyBucketConnector:
-    Type: AWS::Serverless::Connector
-    Properties:
-      Source:
-        Id: GetObjectFunction
-      Destination:
-        Id: MyBucket
-      Permissions:
-        - Read
-
-  DeleteObjectFunctionMyBucketConnector:
-    Type: AWS::Serverless::Connector
-    Properties:
-      Source:
-        Id: DeleteObjectFunction
-      Destination:
-        Id: MyBucket
-      Permissions:
-        - Write
+      ManagedPolicyName:
+        Fn::Sub: ${MyBucket}-write-policy
+      Description: MyBucket write policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: MyBucketWriteOnlyAccess
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:PutObjectAcl
+              - s3:PutLifecycleConfiguration
+            Resource:
+              - Fn::GetAtt: MyBucket.Arn
+              - Fn::Sub: ${MyBucket.Arn}/*
 
 Outputs:
-  HelloWorldApiId:
+  RestApiId:
     Value:
-      Ref: HelloWorldApi
-  HelloWorldApiUrl:
+      Ref: RestApi
+  RestApiUrl:
     Value:
-      Fn::Sub: https://${HelloWorldApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${HelloWorldApi.Stage}
+      Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}
   MyBucketName:
     Value:
       Ref: MyBucket
