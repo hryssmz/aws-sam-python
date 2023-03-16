@@ -24,12 +24,14 @@ Parameters:
     Default: template-configuration.json
 
 Resources:
+  # S3
   ArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName:
         Fn::Sub: ${ProjectName}-artifacts
 
+  # CodeCommit
   CodeCommitRepository:
     Type: AWS::CodeCommit::Repository
     Properties:
@@ -46,6 +48,7 @@ Resources:
             - createReference
             - updateReference
 
+  # CodeBuild
   CodeBuildExecutionPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -116,6 +119,13 @@ Resources:
       Source:
         Type: CODEPIPELINE
 
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/codebuild/${CodeBuildProject}
+
+  # CodePipeline
   CloudFormationServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -286,6 +296,7 @@ Resources:
                 - Name: BuildArtifacts
               RunOrder: 1
 
+  # SNS
   CodeCommitUpdateTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -293,6 +304,7 @@ Resources:
         Fn::Sub: ${ProjectName}-codecommit-update
       FifoTopic: false
 
+  # Lambda
   StartPipelineFunctionPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
