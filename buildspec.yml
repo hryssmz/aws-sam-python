@@ -5,11 +5,11 @@ phases:
       python: 3.9
   build:
     commands:
-      - sam build
       - OPENAPI_FILENAME="`md5sum openapi.yml | awk '{print $1}'`.yml"
       - API_DEFINITION_LOCATION="s3://${S3_BUCKET}/openapi/${OPENAPI_FILENAME}"
+      - sam build
       - aws s3 cp openapi.yml ${API_DEFINITION_LOCATION}
-      - sam package --s3-bucket ${S3_BUCKET} --s3-prefix ${S3_PREFIX} --region ${AWS_REGION} --output-template-file ${PACKAGED_TEMPALTE_PATH}
+      - sam package --s3-bucket ${S3_BUCKET} --s3-prefix aws-sam --output-template-file ${PACKAGED_TEMPALTE_PATH}
       - |
         cat - <<EOF > ${TEMPLATE_CONFIGURATION_PATH}
         {

@@ -95,6 +95,12 @@ Resources:
             RestApiId:
               Ref: RestApi
 
+  HelloWorldFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${HelloWorldFunction}
+
 Outputs:
   RestApiId:
     Value:

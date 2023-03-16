@@ -13,11 +13,6 @@ Parameters:
     Description: CodeCommit branch to deploy
     Default: main
 
-  CodeBuildImage:
-    Type: String
-    Description: CodeBuild build environment image
-    Default: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-
   PackagedTemplatePath:
     Type: String
     Description: Path for the packaged CloudFormation template file
@@ -35,7 +30,7 @@ Resources:
       BucketName:
         Fn::Sub: ${ProjectName}-artifacts
 
-  Repository:
+  CodeCommitRepository:
     Type: AWS::CodeCommit::Repository
     Properties:
       RepositoryDescription: My main repository
@@ -93,7 +88,7 @@ Resources:
       ManagedPolicyArns:
         - Ref: CodeBuildExecutionPolicy
 
-  BuildProject:
+  CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name:
@@ -104,14 +99,11 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image:
-          Ref: CodeBuildImage
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
         EnvironmentVariables:
           - Name: S3_BUCKET
             Value:
               Ref: ArtifactsBucket
-          - Name: S3_PREFIX
-            Value: codebuild
           - Name: PACKAGED_TEMPALTE_PATH
             Value:
               Ref: PackagedTemplatePath
@@ -173,15 +165,15 @@ Resources:
               - codecommit:GetUploadArchiveStatus
               - codecommit:UploadArchive
             Resource:
-              - Fn::GetAtt: Repository.Arn
-          - Sid: CodeBuildExecution
+              - Fn::GetAtt: CodeCommitRepository.Arn
+          - Sid: CodeBuildAccess
             Effect: Allow
             Action:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
             Resource:
-              - Fn::GetAtt: BuildProject.Arn
-          - Sid: CloudFormationExecution
+              - Fn::GetAtt: CodeBuildProject.Arn
+          - Sid: CloudFormationAccess
             Effect: Allow
             Action:
               - cloudformation:CreateStack
@@ -247,7 +239,7 @@ Resources:
                 BranchName:
                   Ref: DeploymentBranch
                 RepositoryName:
-                  Fn::GetAtt: Repository.Name
+                  Fn::GetAtt: CodeCommitRepository.Name
                 PollForSourceChanges: false
               OutputArtifacts:
                 - Name: SourceCode
@@ -263,7 +255,7 @@ Resources:
                 Version: 1
               Configuration:
                 ProjectName:
-                  Ref: BuildProject
+                  Ref: CodeBuildProject
               InputArtifacts:
                 - Name: SourceCode
               OutputArtifacts:
@@ -309,7 +301,7 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: StartPipeline
+          - Sid: StartPipelinePermission
             Effect: Allow
             Action:
               - codepipeline:StartPipelineExecution
@@ -371,15 +363,17 @@ Resources:
           console.log(`Pipeline started: (${response.pipelineExecutionId})`);
         };
 
+  StartPipelineFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${StartPipelineFunction}
+
 Outputs:
-  ProjectName:
+  CodeCommitRepositoryCloneUrlHttp:
     Value:
-      Ref: ProjectName
+      Fn::GetAtt: CodeCommitRepository.CloneUrlHttp
 
-  RepositoryCloneUrlHttp:
+  CodeCommitRepositoryCloneUrlSsh:
     Value:
-      Fn::GetAtt: Repository.CloneUrlHttp
-
-  RepositoryCloneUrlSsh:
-    Value:
-      Fn::GetAtt: Repository.CloneUrlSsh
+      Fn::GetAtt: CodeCommitRepository.CloneUrlSsh
