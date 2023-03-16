@@ -11,7 +11,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     response = {
         **APIGW_RESPONSE,
-        "statusCode": HTTPStatus.BAD_REQUEST,
+        "statusCode": HTTPStatus.OK,
         "body": json_serialize({"message": "Hello World!"}),
     }
     return response
