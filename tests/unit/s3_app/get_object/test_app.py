@@ -25,6 +25,7 @@ def test_ok(clear_my_bucket: None) -> None:
 
     assert response["statusCode"] == HTTPStatus.OK
     assert res_body["content"] == TEST_S3_BODY
+
     jsonschema.validate(res_body, GET_OBJECT_RESPONSE)
 
 
@@ -33,6 +34,8 @@ def test_not_found(clear_my_bucket: None) -> None:
     event["pathParameters"] = {"key": TEST_S3_KEY}
     context = get_dummy_context()
     response = app.handler(dict(event), context)
+    res_body = json.loads(response["body"])
 
     assert response["statusCode"] == HTTPStatus.NOT_FOUND
-    jsonschema.validate(json.loads(response["body"]), CLIENT_ERROR)
+
+    jsonschema.validate(res_body, CLIENT_ERROR)

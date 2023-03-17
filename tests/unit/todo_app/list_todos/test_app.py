@@ -35,4 +35,5 @@ def test_ok(clear_todos: None) -> None:
     assert res_body["todos"][0]["name"] == TODO_NAME
     assert res_body["todos"][0]["description"] == TODO_DESCRIPTION
     assert res_body["todos"][0]["priority"] == TODO_PRIORITY
+
     jsonschema.validate(res_body, LIST_TODOS_RESPONSE)

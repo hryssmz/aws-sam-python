@@ -17,10 +17,12 @@ def test_created(clear_my_bucket: None) -> None:
     event["body"] = json.dumps({"content": TEST_S3_BODY})
     context = get_dummy_context()
     response = app.handler(dict(event), context)
+    res_body = json.loads(response["body"])
 
     assert response["statusCode"] == HTTPStatus.CREATED
     assert list_objects() == [TEST_S3_KEY]
-    jsonschema.validate(json.loads(response["body"]), EMPTY_OBJECT)
+
+    jsonschema.validate(res_body, EMPTY_OBJECT)
 
 
 def test_bad_request() -> None:
@@ -29,6 +31,8 @@ def test_bad_request() -> None:
     event["body"] = json.dumps({})
     context = get_dummy_context()
     response = app.handler(dict(event), context)
+    res_body = json.loads(response["body"])
 
     assert response["statusCode"] == HTTPStatus.BAD_REQUEST
-    jsonschema.validate(json.loads(response["body"]), CLIENT_ERROR)
+
+    jsonschema.validate(res_body, CLIENT_ERROR)

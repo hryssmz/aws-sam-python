@@ -17,7 +17,9 @@ def test_create_object(clear_my_bucket: None) -> None:
     url = f"{API_PREFIX}/objects/{encoded_key}"
     body = {"content": TEST_S3_BODY}
     response = requests.put(url, json=body)
+    res_body = json.loads(response.text)
 
     assert response.status_code == HTTPStatus.CREATED
     assert list_objects() == [TEST_S3_KEY]
-    jsonschema.validate(json.loads(response.text), EMPTY_OBJECT)
+
+    jsonschema.validate(res_body, EMPTY_OBJECT)

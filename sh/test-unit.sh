@@ -8,6 +8,10 @@ pytest_lambda() {
         "tests/unit/$1" || exit 1
 }
 
+pytest_hello_world_app() {
+    pytest_lambda hello_world_app/hello_world
+}
+
 pytest_s3_app() {
     pytest_lambda s3_app/list_objects
     pytest_lambda s3_app/create_object
@@ -23,5 +27,6 @@ pytest_todo_app() {
     pytest_lambda todo_app/get_todo
 }
 
-pytest_s3_app
+pytest_hello_world_app
+# pytest_s3_app
 # pytest_todo_app

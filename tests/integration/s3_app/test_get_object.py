@@ -23,4 +23,5 @@ def test_get_object(clear_my_bucket: None) -> None:
 
     assert response.status_code == HTTPStatus.OK
     assert res_body["content"] == TEST_S3_BODY
+
     jsonschema.validate(res_body, GET_OBJECT_RESPONSE)

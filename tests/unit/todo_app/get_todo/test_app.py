@@ -43,7 +43,8 @@ def test_not_found(clear_todos: None) -> None:
     event["pathParameters"] = {"id": str(uuid.uuid4())}
     context = get_dummy_context()
     response = app.handler(dict(event), context)
+    res_body = json.loads(response["body"])
 
     assert response["statusCode"] == HTTPStatus.NOT_FOUND
 
-    jsonschema.validate(json.loads(response["body"]), CLIENT_ERROR)
+    jsonschema.validate(res_body, CLIENT_ERROR)

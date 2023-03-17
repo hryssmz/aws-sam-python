@@ -36,7 +36,7 @@ def test_created_1(clear_todos: None) -> None:
     assert res_body["todo"]["description"] == TODO_DESCRIPTION
     assert res_body["todo"]["priority"] == TODO_PRIORITY
 
-    jsonschema.validate(json.loads(response["body"]), CREATE_TODO_RESPONSE)
+    jsonschema.validate(res_body, CREATE_TODO_RESPONSE)
 
 
 def test_created_2(clear_todos: None) -> None:
@@ -54,7 +54,7 @@ def test_created_2(clear_todos: None) -> None:
     assert res_body["todo"]["description"] == ""
     assert res_body["todo"]["priority"] == 2
 
-    jsonschema.validate(json.loads(response["body"]), CREATE_TODO_RESPONSE)
+    jsonschema.validate(res_body, CREATE_TODO_RESPONSE)
 
 
 def test_bad_request_1() -> None:
@@ -62,10 +62,11 @@ def test_bad_request_1() -> None:
     event["body"] = json.dumps({"description": TODO_DESCRIPTION})
     context = get_dummy_context()
     response = app.handler(dict(event), context)
+    res_body = json.loads(response["body"])
 
     assert response["statusCode"] == HTTPStatus.BAD_REQUEST
 
-    jsonschema.validate(json.loads(response["body"]), CLIENT_ERROR)
+    jsonschema.validate(res_body, CLIENT_ERROR)
 
 
 def test_bad_request_2() -> None:
@@ -75,7 +76,8 @@ def test_bad_request_2() -> None:
     )
     context = get_dummy_context()
     response = app.handler(dict(event), context)
+    res_body = json.loads(response["body"])
 
     assert response["statusCode"] == HTTPStatus.BAD_REQUEST
 
-    jsonschema.validate(json.loads(response["body"]), CLIENT_ERROR)
+    jsonschema.validate(res_body, CLIENT_ERROR)

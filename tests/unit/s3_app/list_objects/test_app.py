@@ -23,4 +23,5 @@ def test_ok(clear_my_bucket: None) -> None:
 
     assert response["statusCode"] == HTTPStatus.OK
     assert res_body["objects"] == [TEST_S3_KEY]
+
     jsonschema.validate(res_body, LIST_OBJECTS_RESPONSE)

@@ -32,4 +32,5 @@ def test_create_todo(clear_todos: None) -> None:
     assert res_body["todo"]["name"] == TODO_NAME
     assert res_body["todo"]["description"] == TODO_DESCRIPTION
     assert res_body["todo"]["priority"] == TODO_PRIORITY
-    jsonschema.validate(json.loads(response.text), CREATE_TODO_RESPONSE)
+
+    jsonschema.validate(res_body, CREATE_TODO_RESPONSE)
