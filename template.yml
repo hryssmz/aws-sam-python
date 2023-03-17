@@ -73,6 +73,8 @@ Resources:
   RestApi:
     Type: AWS::Serverless::Api
     Properties:
+      Name:
+        Ref: ProjectName
       Description:
         Fn::Sub: ${ProjectName} REST API
       StageName:
@@ -357,6 +359,7 @@ Resources:
               - dynamodb:PutItem
               - dynamodb:UpdateItem
               - dynamodb:BatchWriteItem
+              - dynamodb:DeleteItem
             Resource:
               - Fn::GetAtt: TodoTable.Arn
 

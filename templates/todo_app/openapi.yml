@@ -1,6 +1,6 @@
 openapi: "3.0.1"
 info:
-  title: aws-sam-python-HelloWorldApi
+  title: My REST API
   version: "1.0"
 
 servers:
