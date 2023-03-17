@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Sample SAM App
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+  EnvironmentType:
+    Type: String
+    Description: API Gateway deployment stage
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    ConstraintDescription: must be either 'dev' or 'prod'
+
+  Architecture:
+    Type: String
+    Description: Lambda runtime architecture
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
+    ConstraintDescription: must be either 'arm64' or 'x86_64'
+
+  ApiDefinitionLocation:
+    Type: String
+    Description: S3 URL for OpenAPI definition
+
+Globals:
+  Function:
+    Handler: app.handler
+    Runtime: python3.9
+    Timeout: 10
+    Architectures:
+      - Ref: Architecture
+
+Resources:
+  # REST API
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Ref: ProjectName
+      Description:
+        Fn::Sub: ${ProjectName} REST API
+      StageName:
+        Ref: EnvironmentType
+      Cors:
+        AllowHeaders: "'*'"
+        AllowMethods: "'*'"
+        AllowOrigin: "'*'"
+      OpenApiVersion: "3.0.1"
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Ref: ApiDefinitionLocation
+
+  # Lambda functions (REST API)
+  HelloWorldFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-hello-world-function-role
+      Description: Service role for HelloWorldFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/hello_world_app/hello_world
+      FunctionName:
+        Fn::Sub: ${ProjectName}-hello-world
+      Description: HelloWorld function
+      Role:
+        Fn::GetAtt: HelloWorldFunctionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /
+            RestApiId:
+              Ref: RestApi
+
+  HelloWorldFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${HelloWorldFunction}
+
+Outputs:
+  RestApiId:
+    Value:
+      Ref: RestApi
+
+  RestApiUrl:
+    Value:
+      Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}

@@ -3,6 +3,11 @@ Transform: AWS::Serverless-2016-10-31
 Description: Sample SAM App
 
 Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
   EnvironmentType:
     Type: String
     Description: API Gateway deployment stage
@@ -10,14 +15,16 @@ Parameters:
     AllowedValues:
       - dev
       - prod
+    ConstraintDescription: must be either 'dev' or 'prod'
 
   Architecture:
     Type: String
-    Description: Lambda CPU architecture
+    Description: Lambda runtime architecture
     Default: arm64
     AllowedValues:
       - arm64
       - x86_64
+    ConstraintDescription: must be either 'arm64' or 'x86_64'
 
   RCU:
     Type: Number
@@ -25,6 +32,7 @@ Parameters:
     Default: 3
     MinValue: 1
     MaxValue: 5
+    ConstraintDescription: must be an integer between 1 and 5
 
   WCU:
     Type: Number
@@ -32,6 +40,11 @@ Parameters:
     Default: 3
     MinValue: 1
     MaxValue: 5
+    ConstraintDescription: must be an integer between 1 and 5
+
+  ApiDefinitionLocation:
+    Type: String
+    Description: S3 URL for OpenAPI definition
 
 Globals:
   Function:
@@ -45,6 +58,8 @@ Resources:
   TodoTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
+      TableName:
+        Fn::Sub: ${ProjectName}-todo-table
       PrimaryKey:
         Name: id
         Type: String
@@ -55,10 +70,11 @@ Resources:
           Ref: WCU
 
   # REST API
-  HelloWorldApi:
+  RestApi:
     Type: AWS::Serverless::Api
     Properties:
-      Description: Hello World REST API
+      Description:
+        Fn::Sub: ${ProjectName} REST API
       StageName:
         Ref: EnvironmentType
       Cors:
@@ -67,318 +83,37 @@ Resources:
         AllowOrigin: "'*'"
       OpenApiVersion: "3.0.1"
       DefinitionBody:
-        openapi: "3.0.1"
-        info:
-          title: aws-sam-python-HelloWorldApi
-          version: "1.0"
-        servers:
-          - url: https://{restApiId}.execute-api.{region}.amazonaws.com/{basePath}
-            variables:
-              restApiId:
-                default: example123
-              region:
-                default: ap-northeast-1
-              basePath:
-                default: dev
-        paths:
-          /todos:
-            get:
-              operationId: ListTodos
-              responses:
-                "200":
-                  description: 200 OK
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/ListTodosResponse"
-                  headers:
-                    Access-Control-Allow-Origin:
-                      $ref: "#/components/headers/Access-Control-Allow-Origin"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListTodosFunction.Arn}/invocations
-                httpMethod: POST
-            post:
-              operationId: CreateTodo
-              requestBody:
-                description: CreateTodo request body
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/CreateTodoRequest"
-              responses:
-                "201":
-                  description: 201 Created
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/CreateTodoResponse"
-                "400":
-                  $ref: "#/components/responses/BadRequest"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateTodoFunction.Arn}/invocations
-                httpMethod: POST
-          /todos/{id}:
-            parameters:
-              - $ref: "#/components/parameters/todoId"
-            delete:
-              operationId: DeleteTodo
-              responses:
-                "204":
-                  $ref: "#/components/responses/NoContent"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteTodoFunction.Arn}/invocations
-                httpMethod: POST
-            put:
-              operationId: UpdateTodo
-              requestBody:
-                description: UpdateTodo request body
-                required: true
-                content:
-                  application/json:
-                    schema:
-                      $ref: "#/components/schemas/UpdateTodoRequest"
-              responses:
-                "200":
-                  description: 200 OK
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/UpdateTodoResponse"
-                "400":
-                  $ref: "#/components/responses/BadRequest"
-                "404":
-                  $ref: "#/components/responses/NotFound"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateTodoFunction.Arn}/invocations
-                httpMethod: POST
-            get:
-              operationId: GetTodo
-              responses:
-                "200":
-                  description: 200 OK
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/GetTodoResponse"
-                "404":
-                  $ref: "#/components/responses/NotFound"
-              x-amazon-apigateway-integration:
-                type: aws_proxy
-                uri:
-                  Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetTodoFunction.Arn}/invocations
-                httpMethod: POST
-        components:
-          schemas:
-            EmptyObject:
-              description: Empty object
-              type: object
-              properties: {}
-              example: {}
-            ClientError:
-              description: Client error object
-              type: object
-              required:
-                - code
-                - message
-              properties:
-                code:
-                  type: string
-                message:
-                  type: string
-              example:
-                code: ClientError
-                message: Error message
-            TodoItem:
-              description: Todo item
-              type: object
-              required:
-                - id
-                - name
-                - description
-                - priority
-                - createdAt
-                - updatedAt
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                name:
-                  type: string
-                description:
-                  type: string
-                priority:
-                  type: integer
-                  minimum: 1
-                  maximum: 3
-                createdAt:
-                  type: string
-                  format: date-time
-                updatedAt:
-                  type: string
-                  format: date-time
-              example:
-                id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
-                name: Shopping
-                description: Buy some eggs
-                priority: 2
-                createdAt: "2023-01-10T13:00:00Z"
-                updatedAt: "2023-01-10T13:00:00Z"
-            ListTodosResponse:
-              description: Response body for GET /todos
-              type: object
-              required:
-                - todos
-              properties:
-                todos:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/TodoItem"
-              example:
-                todos:
-                  - id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
-                    name: Shopping
-                    description: Buy some eggs
-                    priority: 2
-                    createdAt: "2023-01-10T13:00:00Z"
-                    updatedAt: "2023-01-10T13:00:00Z"
-            CreateTodoRequest:
-              description: Request body for POST /todos
-              type: object
-              required:
-                - name
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-                  default: ""
-                priority:
-                  type: integer
-                  minimum: 1
-                  maximum: 3
-                  default: 2
-              example:
-                name: Shopping
-                description: Buy some eggs
-                priority: 2
-            CreateTodoResponse:
-              description: Response body for POST /todos
-              type: object
-              required:
-                - todo
-              properties:
-                todo:
-                  $ref: "#/components/schemas/TodoItem"
-              example:
-                todo:
-                  id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
-                  name: Shopping
-                  description: Buy some eggs
-                  priority: 2
-                  createdAt: "2023-01-10T13:00:00Z"
-                  updatedAt: "2023-01-10T13:00:00Z"
-            UpdateTodoRequest:
-              description: Request body for PUT /todos/{id}
-              type: object
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-                priority:
-                  type: integer
-                  minimum: 1
-                  maximum: 3
-              example:
-                name: Meeting
-                description: 2023/01/11 10:00 AM at office
-                priority: 1
-            UpdateTodoResponse:
-              description: Response body for PUT /todos/{id}
-              type: object
-              required:
-                - todo
-              properties:
-                todo:
-                  $ref: "#/components/schemas/TodoItem"
-              example:
-                todo:
-                  id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
-                  name: Meeting
-                  description: 2023/01/11 10:00 AM at office
-                  priority: 1
-                  createdAt: "2023-01-10T13:00:00Z"
-                  updatedAt: "2023-01-10T16:00:00Z"
-            GetTodoResponse:
-              description: Response body for GET /todos/{id}
-              type: object
-              required:
-                - todo
-              properties:
-                todo:
-                  $ref: "#/components/schemas/TodoItem"
-              example:
-                todo:
-                  id: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
-                  name: Shopping
-                  description: Buy some eggs
-                  priority: 2
-                  createdAt: "2023-01-10T13:00:00Z"
-                  updatedAt: "2023-01-10T13:00:00Z"
-          parameters:
-            todoId:
-              name: id
-              in: path
-              description: Todo ID
-              required: true
-              schema:
-                type: string
-                example: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
-          headers:
-            Access-Control-Allow-Origin:
-              description: Response header for CORS support
-              schema:
-                type: string
-                example: "*"
-          responses:
-            NoContent:
-              description: 204 No Content
-              headers:
-                Access-Control-Allow-Origin:
-                  $ref: "#/components/headers/Access-Control-Allow-Origin"
-            BadRequest:
-              description: 400 Bad Request
-              content:
-                application/json:
-                  schema:
-                    $ref: "#/components/schemas/ClientError"
-              headers:
-                Access-Control-Allow-Origin:
-                  $ref: "#/components/headers/Access-Control-Allow-Origin"
-            NotFound:
-              description: 404 Not Found
-              content:
-                application/json:
-                  schema:
-                    $ref: "#/components/schemas/ClientError"
-              headers:
-                Access-Control-Allow-Origin:
-                  $ref: "#/components/headers/Access-Control-Allow-Origin"
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Ref: ApiDefinitionLocation
 
   # Lambda functions (REST API)
+  ListTodosFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-list-todos-function-role
+      Description: Service role for ListTodosFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableReadPolicy
+
   ListTodosFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/todo_app/list_todos
+      FunctionName:
+        Fn::Sub: ${ProjectName}-list-todos
       Description: List todos function
       Environment:
         Variables:
@@ -391,12 +126,38 @@ Resources:
             Method: GET
             Path: /todos
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  ListTodosFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ListTodosFunction}
+
+  CreateTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-create-todo-function-role
+      Description: Service role for CreateTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableWritePolicy
 
   CreateTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/todo_app/create_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-create-todo
       Description: Create todo function
       Environment:
         Variables:
@@ -409,12 +170,38 @@ Resources:
             Method: POST
             Path: /todos
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  CreateTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${CreateTodoFunction}
+
+  DeleteTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-delete-todo-function-role
+      Description: Service role for DeleteTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableWritePolicy
 
   DeleteTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/todo_app/delete_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-delete-todo
       Description: Delete todo function
       Environment:
         Variables:
@@ -427,12 +214,39 @@ Resources:
             Method: DELETE
             Path: /todos/{id}
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  DeleteTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DeleteTodoFunction}
+
+  UpdateTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-update-toto-function-role
+      Description: Service role for UpdateTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableReadPolicy
+        - Ref: TodoTableWritePolicy
 
   UpdateTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/todo_app/update_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-update-todo
       Description: Update todo function
       Environment:
         Variables:
@@ -445,12 +259,38 @@ Resources:
             Method: PUT
             Path: /todos/{id}
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  UpdateTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${UpdateTodoFunction}
+
+  GetTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-get-todo-function-role
+      Description: Service role for GetTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableReadPolicy
 
   GetTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/todo_app/get_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-get-todo
       Description: Get todo function
       Environment:
         Variables:
@@ -463,67 +303,62 @@ Resources:
             Method: GET
             Path: /todos/{id}
             RestApiId:
-              Ref: HelloWorldApi
+              Ref: RestApi
+
+  GetTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${GetTodoFunction}
 
   # Permissions
-  ListTodosFunctionTodoTableConnector:
-    Type: AWS::Serverless::Connector
+  TodoTableReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      Source:
-        Id: ListTodosFunction
-      Destination:
-        Id: TodoTable
-      Permissions:
-        - Read
+      ManagedPolicyName:
+        Fn::Sub: ${TodoTable}-read-policy
+      Description: TodoTable read policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TodoTableReadOnlyAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:Query
+              - dynamodb:BatchGetItem
+              - dynamodb:DescribeTable
+            Resource:
+              - Fn::GetAtt: TodoTable.Arn
 
-  CreateTodoFunctionTodoTableConnector:
-    Type: AWS::Serverless::Connector
+  TodoTableWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      Source:
-        Id: CreateTodoFunction
-      Destination:
-        Id: TodoTable
-      Permissions:
-        - Write
-
-  DeleteTodoFunctionTodoTableConnector:
-    Type: AWS::Serverless::Connector
-    Properties:
-      Source:
-        Id: DeleteTodoFunction
-      Destination:
-        Id: TodoTable
-      Permissions:
-        - Write
-
-  UpdateTodoFunctionTodoTableConnector:
-    Type: AWS::Serverless::Connector
-    Properties:
-      Source:
-        Id: UpdateTodoFunction
-      Destination:
-        Id: TodoTable
-      Permissions:
-        - Read
-        - Write
-
-  GetTodoFunctionTodoTableConnector:
-    Type: AWS::Serverless::Connector
-    Properties:
-      Source:
-        Id: GetTodoFunction
-      Destination:
-        Id: TodoTable
-      Permissions:
-        - Read
+      ManagedPolicyName:
+        Fn::Sub: ${TodoTable}-write-policy
+      Description: TodoTable write policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TodoTableWriteOnlyAccess
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:BatchWriteItem
+            Resource:
+              - Fn::GetAtt: TodoTable.Arn
 
 Outputs:
-  HelloWorldApiId:
+  RestApiId:
     Value:
-      Ref: HelloWorldApi
-  HelloWorldApiUrl:
+      Ref: RestApi
+
+  RestApiUrl:
     Value:
-      Fn::Sub: https://${HelloWorldApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${HelloWorldApi.Stage}
+      Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}
+
   TodoTableName:
     Value:
       Ref: TodoTable

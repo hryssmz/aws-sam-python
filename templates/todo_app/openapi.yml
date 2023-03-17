@@ -2,15 +2,17 @@ openapi: "3.0.1"
 info:
   title: aws-sam-python-HelloWorldApi
   version: "1.0"
+
 servers:
   - url: https://{restApiId}.execute-api.{region}.amazonaws.com/{basePath}
     variables:
       restApiId:
-        default: 0bk1q3deg0
+        default: example123
       region:
         default: ap-northeast-1
       basePath:
         default: dev
+
 paths:
   /todos:
     get:
@@ -30,6 +32,7 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListTodosFunction.Arn}/invocations
         httpMethod: POST
+
     post:
       operationId: CreateTodo
       requestBody:
@@ -53,9 +56,11 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateTodoFunction.Arn}/invocations
         httpMethod: POST
+
   /todos/{id}:
     parameters:
       - $ref: "#/components/parameters/todoId"
+
     delete:
       operationId: DeleteTodo
       responses:
@@ -66,6 +71,7 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteTodoFunction.Arn}/invocations
         httpMethod: POST
+
     put:
       operationId: UpdateTodo
       requestBody:
@@ -91,6 +97,7 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateTodoFunction.Arn}/invocations
         httpMethod: POST
+
     get:
       operationId: GetTodo
       responses:
@@ -107,6 +114,7 @@ paths:
         uri:
           Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetTodoFunction.Arn}/invocations
         httpMethod: POST
+
 components:
   schemas:
     EmptyObject:
@@ -114,6 +122,7 @@ components:
       type: object
       properties: {}
       example: {}
+
     ClientError:
       description: Client error object
       type: object
@@ -128,6 +137,7 @@ components:
       example:
         code: ClientError
         message: Error message
+
     TodoItem:
       description: Todo item
       type: object
@@ -163,6 +173,7 @@ components:
         priority: 2
         createdAt: "2023-01-10T13:00:00Z"
         updatedAt: "2023-01-10T13:00:00Z"
+
     ListTodosResponse:
       description: Response body for GET /todos
       type: object
@@ -181,6 +192,7 @@ components:
             priority: 2
             createdAt: "2023-01-10T13:00:00Z"
             updatedAt: "2023-01-10T13:00:00Z"
+
     CreateTodoRequest:
       description: Request body for POST /todos
       type: object
@@ -201,6 +213,7 @@ components:
         name: Shopping
         description: Buy some eggs
         priority: 2
+
     CreateTodoResponse:
       description: Response body for POST /todos
       type: object
@@ -217,6 +230,7 @@ components:
           priority: 2
           createdAt: "2023-01-10T13:00:00Z"
           updatedAt: "2023-01-10T13:00:00Z"
+
     UpdateTodoRequest:
       description: Request body for PUT /todos/{id}
       type: object
@@ -233,6 +247,7 @@ components:
         name: Meeting
         description: 2023/01/11 10:00 AM at office
         priority: 1
+
     UpdateTodoResponse:
       description: Response body for PUT /todos/{id}
       type: object
@@ -249,6 +264,7 @@ components:
           priority: 1
           createdAt: "2023-01-10T13:00:00Z"
           updatedAt: "2023-01-10T16:00:00Z"
+
     GetTodoResponse:
       description: Response body for GET /todos/{id}
       type: object
@@ -265,6 +281,7 @@ components:
           priority: 2
           createdAt: "2023-01-10T13:00:00Z"
           updatedAt: "2023-01-10T13:00:00Z"
+
   parameters:
     todoId:
       name: id
@@ -274,18 +291,21 @@ components:
       schema:
         type: string
         example: 3e4666bf-d5e5-4aa7-b8ce-cefe41c7568a
+
   headers:
     Access-Control-Allow-Origin:
       description: Response header for CORS support
       schema:
         type: string
         example: "*"
+
   responses:
     NoContent:
       description: 204 No Content
       headers:
         Access-Control-Allow-Origin:
           $ref: "#/components/headers/Access-Control-Allow-Origin"
+
     BadRequest:
       description: 400 Bad Request
       content:
@@ -295,6 +315,7 @@ components:
       headers:
         Access-Control-Allow-Origin:
           $ref: "#/components/headers/Access-Control-Allow-Origin"
+
     NotFound:
       description: 404 Not Found
       content:

@@ -15,14 +15,16 @@ Parameters:
     AllowedValues:
       - dev
       - prod
+    ConstraintDescription: must be either 'dev' or 'prod'
 
   Architecture:
     Type: String
-    Description: Lambda CPU architecture
+    Description: Lambda runtime architecture
     Default: arm64
     AllowedValues:
       - arm64
       - x86_64
+    ConstraintDescription: must be either 'arm64' or 'x86_64'
 
   ApiDefinitionLocation:
     Type: String
@@ -106,6 +108,12 @@ Resources:
             RestApiId:
               Ref: RestApi
 
+  ListObjectsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ListObjectsFunction}
+
   CreateObjectFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -145,6 +153,12 @@ Resources:
             Path: /objects/{key}
             RestApiId:
               Ref: RestApi
+
+  CreateObjectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${CreateObjectFunction}
 
   GetObjectFunctionRole:
     Type: AWS::IAM::Role
@@ -186,6 +200,12 @@ Resources:
             RestApiId:
               Ref: RestApi
 
+  GetObjectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${GetObjectFunction}
+
   DeleteObjectFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -225,6 +245,12 @@ Resources:
             Path: /objects/{key}
             RestApiId:
               Ref: RestApi
+
+  DeleteObjectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DeleteObjectFunction}
 
   # Permissions
   MyBucketReadPolicy:
@@ -271,9 +297,11 @@ Outputs:
   RestApiId:
     Value:
       Ref: RestApi
+
   RestApiUrl:
     Value:
       Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}
+
   MyBucketName:
     Value:
       Ref: MyBucket

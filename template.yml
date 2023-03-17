@@ -15,14 +15,32 @@ Parameters:
     AllowedValues:
       - dev
       - prod
+    ConstraintDescription: must be either 'dev' or 'prod'
 
   Architecture:
     Type: String
-    Description: Lambda CPU architecture
+    Description: Lambda runtime architecture
     Default: arm64
     AllowedValues:
       - arm64
       - x86_64
+    ConstraintDescription: must be either 'arm64' or 'x86_64'
+
+  RCU:
+    Type: Number
+    Description: DynamoDB read capacity units
+    Default: 3
+    MinValue: 1
+    MaxValue: 5
+    ConstraintDescription: must be an integer between 1 and 5
+
+  WCU:
+    Type: Number
+    Description: DynamoDB write capacity units
+    Default: 3
+    MinValue: 1
+    MaxValue: 5
+    ConstraintDescription: must be an integer between 1 and 5
 
   ApiDefinitionLocation:
     Type: String
@@ -37,12 +55,24 @@ Globals:
       - Ref: Architecture
 
 Resources:
+  TodoTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName:
+        Fn::Sub: ${ProjectName}-todo-table
+      PrimaryKey:
+        Name: id
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits:
+          Ref: RCU
+        WriteCapacityUnits:
+          Ref: WCU
+
   # REST API
   RestApi:
     Type: AWS::Serverless::Api
     Properties:
-      Name:
-        Ref: ProjectName
       Description:
         Fn::Sub: ${ProjectName} REST API
       StageName:
@@ -60,12 +90,12 @@ Resources:
               Ref: ApiDefinitionLocation
 
   # Lambda functions (REST API)
-  HelloWorldFunctionRole:
+  ListTodosFunctionRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName:
-        Fn::Sub: ${ProjectName}-hello-world-function-role
-      Description: Service role for HelloWorldFunction
+        Fn::Sub: ${ProjectName}-list-todos-function-role
+      Description: Service role for ListTodosFunction
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -76,35 +106,259 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableReadPolicy
 
-  HelloWorldFunction:
+  ListTodosFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/hello_world_app/hello_world
+      CodeUri: functions/todo_app/list_todos
       FunctionName:
-        Fn::Sub: ${ProjectName}-hello-world
-      Description: HelloWorld function
-      Role:
-        Fn::GetAtt: HelloWorldFunctionRole.Arn
+        Fn::Sub: ${ProjectName}-list-todos
+      Description: List todos function
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Ref: TodoTable
       Events:
         ApiEvent:
           Type: Api
           Properties:
             Method: GET
-            Path: /
+            Path: /todos
             RestApiId:
               Ref: RestApi
 
-  HelloWorldFunctionLogGroup:
+  ListTodosFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
-        Fn::Sub: /aws/lambda/${HelloWorldFunction}
+        Fn::Sub: /aws/lambda/${ListTodosFunction}
+
+  CreateTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-create-todo-function-role
+      Description: Service role for CreateTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableWritePolicy
+
+  CreateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/todo_app/create_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-create-todo
+      Description: Create todo function
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Ref: TodoTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: POST
+            Path: /todos
+            RestApiId:
+              Ref: RestApi
+
+  CreateTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${CreateTodoFunction}
+
+  DeleteTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-delete-todo-function-role
+      Description: Service role for DeleteTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableWritePolicy
+
+  DeleteTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/todo_app/delete_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-delete-todo
+      Description: Delete todo function
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Ref: TodoTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: DELETE
+            Path: /todos/{id}
+            RestApiId:
+              Ref: RestApi
+
+  DeleteTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DeleteTodoFunction}
+
+  UpdateTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-update-toto-function-role
+      Description: Service role for UpdateTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableReadPolicy
+        - Ref: TodoTableWritePolicy
+
+  UpdateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/todo_app/update_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-update-todo
+      Description: Update todo function
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Ref: TodoTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: PUT
+            Path: /todos/{id}
+            RestApiId:
+              Ref: RestApi
+
+  UpdateTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${UpdateTodoFunction}
+
+  GetTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-get-todo-function-role
+      Description: Service role for GetTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: TodoTableReadPolicy
+
+  GetTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/todo_app/get_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-get-todo
+      Description: Get todo function
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Ref: TodoTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /todos/{id}
+            RestApiId:
+              Ref: RestApi
+
+  GetTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${GetTodoFunction}
+
+  # Permissions
+  TodoTableReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${TodoTable}-read-policy
+      Description: TodoTable read policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TodoTableReadOnlyAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:Query
+              - dynamodb:BatchGetItem
+              - dynamodb:DescribeTable
+            Resource:
+              - Fn::GetAtt: TodoTable.Arn
+
+  TodoTableWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${TodoTable}-write-policy
+      Description: TodoTable write policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TodoTableWriteOnlyAccess
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:BatchWriteItem
+            Resource:
+              - Fn::GetAtt: TodoTable.Arn
 
 Outputs:
   RestApiId:
     Value:
       Ref: RestApi
+
   RestApiUrl:
     Value:
       Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}
+
+  TodoTableName:
+    Value:
+      Ref: TodoTable
