@@ -17,6 +17,8 @@ paths:
   /:
     get:
       operationId: HelloWorld
+      tags:
+        - HelloWorld
       responses:
         "200":
           description: 200 OK

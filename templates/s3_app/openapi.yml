@@ -17,6 +17,8 @@ paths:
   /objects:
     get:
       operationId: ListObjects
+      tags:
+        - S3 Objects
       responses:
         "200":
           description: 200 OK
@@ -39,6 +41,8 @@ paths:
 
     put:
       operationId: PutObject
+      tags:
+        - S3 Objects
       requestBody:
         description: PutObject request body
         required: true
@@ -66,6 +70,8 @@ paths:
 
     get:
       operationId: GetObject
+      tags:
+        - S3 Objects
       responses:
         "200":
           description: 200 OK
@@ -86,6 +92,8 @@ paths:
 
     delete:
       operationId: DeleteObject
+      tags:
+        - S3 Objects
       responses:
         "204":
           $ref: "#/components/responses/NoContent"
