@@ -17,13 +17,15 @@ paths:
   /todos:
     get:
       operationId: ListTodos
+      tags:
+        - Todo APIs
       responses:
         "200":
           description: 200 OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/list_todos_response"
+                $ref: "#/components/schemas/ListTodosResponse"
           headers:
             Access-Control-Allow-Origin:
               $ref: "#/components/headers/Access-Control-Allow-Origin"
@@ -35,6 +37,8 @@ paths:
 
     post:
       operationId: CreateTodo
+      tags:
+        - Todo APIs
       requestBody:
         description: CreateTodo request body
         required: true
@@ -63,6 +67,8 @@ paths:
 
     delete:
       operationId: DeleteTodo
+      tags:
+        - Todo APIs
       responses:
         "204":
           $ref: "#/components/responses/NoContent"
@@ -74,6 +80,8 @@ paths:
 
     put:
       operationId: UpdateTodo
+      tags:
+        - Todo APIs
       requestBody:
         description: UpdateTodo request body
         required: true
@@ -100,6 +108,8 @@ paths:
 
     get:
       operationId: GetTodo
+      tags:
+        - Todo APIs
       responses:
         "200":
           description: 200 OK
@@ -174,7 +184,7 @@ components:
         createdAt: "2023-01-10T13:00:00Z"
         updatedAt: "2023-01-10T13:00:00Z"
 
-    list_todos_response:
+    ListTodosResponse:
       description: Response body for GET /todos
       type: object
       required:
