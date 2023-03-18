@@ -120,6 +120,7 @@ Resources:
             Action:
               - codebuild:CreateReportGroup
               - codebuild:CreateReport
+              - codebuild:UpdateReport
             Resource: "*"
 
   CodeBuildServiceRole:
@@ -192,6 +193,26 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec:
           Ref: UnitTestBuildSpecPath
+
+  UnitTestAPICoverageReportGroup:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${UnitTestAPIProject}-coverage
+      Type: CODE_COVERAGE
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+
+  UnitTestAPITestReportGroup:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${UnitTestAPIProject}-test
+      Type: TEST
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
 
   UnitTestAPIProjectLogGroup:
     Type: AWS::Logs::LogGroup

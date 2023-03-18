@@ -15,10 +15,18 @@ phases:
 
 artifacts:
   files:
-    - htmlcov/**/*
+    - "**/*"
+  base-directory: tests/report/htmlcov/hello_world_app
 
 reports:
-  coverage-report:
+  coverage:
     files:
-      - coverage.xml
+      - tests/report/clover/hello_world_app/*.xml
+    discard-paths: yes
+    file-format: CLOVERXML
+
+  test:
+    files:
+      - tests/report/junit/hello_world_app/*.xml
+    discard-paths: yes
     file-format: JUNITXML
