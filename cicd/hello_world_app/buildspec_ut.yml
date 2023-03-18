@@ -4,6 +4,7 @@ phases:
     runtime-versions:
       python: 3.9
     commands:
+      - pip install aws_lambda_typing
       - pip install boto3
       - pip install jsonschema
       - pip install pytest
