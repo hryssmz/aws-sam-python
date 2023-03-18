@@ -195,7 +195,7 @@ Resources:
           Ref: UnitTestBuildSpecPath
 
   UnitTestAPICoverageReportGroup:
-    Type: AWS::CodeBuild::Project
+    Type: AWS::CodeBuild::ReportGroup
     Properties:
       Name:
         Fn::Sub: ${UnitTestAPIProject}-coverage
@@ -205,7 +205,7 @@ Resources:
         ExportConfigType: NO_EXPORT
 
   UnitTestAPITestReportGroup:
-    Type: AWS::CodeBuild::Project
+    Type: AWS::CodeBuild::ReportGroup
     Properties:
       Name:
         Fn::Sub: ${UnitTestAPIProject}-test
