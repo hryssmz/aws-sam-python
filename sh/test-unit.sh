@@ -3,6 +3,7 @@ pytest_lambda() {
     pytest \
         --cov-report=term \
         --cov-report="html:tests/unit/$1/htmlcov" \
+        --cov-report="xml:tests/unit/$1/coverage.xml" \
         --cov="functions/$1" \
         --override-ini="pythonpath=functions/$1 ." \
         "tests/unit/$1" || exit 1

@@ -1,0 +1,18 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install boto3
+      - pip install jsonschema
+      - pip install pytest
+      - pip install pytest-cov
+  build:
+    commands:
+      - ./cicd/hello_world_app/test-unit.sh
+
+artifacts:
+  files:
+    - coverage.xml
+    - htmlcov

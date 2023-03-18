@@ -23,6 +23,48 @@ Parameters:
     Description: Path for the CloudFormation template configuration file
     Default: template-configuration.json
 
+  BuildSpecPath:
+    Type: String
+    Description: CodeBuild buildspec path for building
+    Default: cicd/hello_world_app/buildspec.yml
+
+  CicdTemplatePath:
+    Type: String
+    Description: Path for the CI/CD CloudFormation template file
+    # Default: "" # don't update CI/CD stack
+    Default: cicd/hello_world_app/template.yml
+
+  UnitTestBuildSpecPath:
+    Type: String
+    Description: CodeBuild buildspec file for unit test
+    # Default: "" # don't run unit tests
+    Default: cicd/hello_world_app/buildspec_ut.yml
+
+  IntegrationTestBuildSpecPath:
+    Type: String
+    Description: CodeBuild buildspec file for integration test
+    Default: "" # don't run integration tests
+    # Default: cicd/hello_world_app/buildspec_it.yml
+
+Conditions:
+  DeployCICDCondition:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: CicdTemplatePath
+          - ""
+
+  RunUnitTestsCondition:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: UnitTestBuildSpecPath
+          - ""
+
+  RunIntegrationTestsCondition:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: IntegrationTestBuildSpecPath
+          - ""
+
 Resources:
   # S3
   ArtifactsBucket:
@@ -92,12 +134,12 @@ Resources:
       ManagedPolicyArns:
         - Ref: CodeBuildExecutionPolicy
 
-  CodeBuildProject:
+  BuildAPIProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name:
-        Ref: ProjectName
-      Description: Build project
+        Fn::Sub: ${ProjectName}-build-api
+      Description: Build API project
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -118,12 +160,64 @@ Resources:
         Fn::GetAtt: CodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
+        BuildSpec:
+          Ref: BuildSpecPath
 
-  CodeBuildLogGroup:
+  BuildAPIProjectLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
-        Fn::Sub: /aws/codebuild/${CodeBuildProject}
+        Fn::Sub: /aws/codebuild/${BuildAPIProject}
+
+  UnitTestAPIProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${ProjectName}-unit-test-api
+      Description: Unit test API project
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec:
+          Ref: UnitTestBuildSpecPath
+
+  UnitTestAPIProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/codebuild/${UnitTestAPIProject}
+
+  IntegrationTestAPIProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${ProjectName}-integration-test-api
+      Description: Integration test API project
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec:
+          Ref: IntegrationTestBuildSpecPath
+
+  IntegrationTestAPIProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/codebuild/${IntegrationTestAPIProject}
 
   # CodePipeline
   CloudFormationServiceRole:
@@ -183,7 +277,9 @@ Resources:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
             Resource:
-              - Fn::GetAtt: CodeBuildProject.Arn
+              - Fn::GetAtt: BuildAPIProject.Arn
+              - Fn::GetAtt: UnitTestAPIProject.Arn
+              - Fn::GetAtt: IntegrationTestAPIProject.Arn
           - Sid: CloudFormationAccess
             Effect: Allow
             Action:
@@ -242,10 +338,10 @@ Resources:
           Actions:
             - Name: Source
               ActionTypeId:
-                Version: "1"
                 Category: Source
                 Owner: AWS
                 Provider: CodeCommit
+                Version: 1
               Configuration:
                 BranchName:
                   Ref: DeploymentBranch
@@ -256,45 +352,105 @@ Resources:
                 - Name: SourceCode
               RunOrder: 1
 
-        - Name: Build
-          Actions:
-            - Name: Build
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: 1
-              Configuration:
-                ProjectName:
-                  Ref: CodeBuildProject
-              InputArtifacts:
-                - Name: SourceCode
-              OutputArtifacts:
-                - Name: BuildArtifacts
-              RunOrder: 1
+        - Fn::If:
+            - DeployCICDCondition
+            - Name: DeployCICD
+              Actions:
+                - Name: DeployCICD
+                  ActionTypeId:
+                    Category: Deploy
+                    Owner: AWS
+                    Provider: CloudFormation
+                    Version: 1
+                  Configuration:
+                    ActionMode: CREATE_UPDATE
+                    StackName:
+                      Fn::Sub: ${ProjectName}-cicd
+                    Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                    RoleArn:
+                      Fn::GetAtt: CloudFormationServiceRole.Arn
+                    TemplatePath:
+                      Fn::Sub: BuildArtifacts::${CicdTemplatePath}
+                  InputArtifacts:
+                    - Name: SourceCode
+                  RunOrder: 1
+            - Ref: AWS::NoValue
 
-        - Name: Deploy
+        - Name: BuildAPI
           Actions:
-            - Name: Deploy
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: CloudFormation
-                Version: 1
-              Configuration:
-                ActionMode: CREATE_UPDATE
-                StackName:
-                  Fn::Sub: ${ProjectName}-api
-                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
-                RoleArn:
-                  Fn::GetAtt: CloudFormationServiceRole.Arn
-                TemplatePath:
-                  Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
-                TemplateConfiguration:
-                  Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
-              InputArtifacts:
-                - Name: BuildArtifacts
-              RunOrder: 1
+            - Fn::If:
+                - RunUnitTestsCondition
+                - Name: UnitTestAPI
+                  ActionTypeId:
+                    Category: Build
+                    Owner: AWS
+                    Provider: CodeBuild
+                    Version: 1
+                  Configuration:
+                    ProjectName:
+                      Ref: UnitTestAPIProject
+                  InputArtifacts:
+                    - Name: SourceCode
+                  OutputArtifacts:
+                    - Name: UnitTestReport
+                  RunOrder: 1
+                - Ref: AWS::NoValue
+
+            # - Name: BuildAPI
+            #   ActionTypeId:
+            #     Category: Build
+            #     Owner: AWS
+            #     Provider: CodeBuild
+            #     Version: 1
+            #   Configuration:
+            #     ProjectName:
+            #       Ref: BuildAPIProject
+            #   InputArtifacts:
+            #     - Name: SourceCode
+            #   OutputArtifacts:
+            #     - Name: BuildArtifacts
+            #   RunOrder: 1 # parallel
+
+        # - Name: DeployAPI
+        #   Actions:
+        #     - Name: DeployAPI
+        #       ActionTypeId:
+        #         Category: Deploy
+        #         Owner: AWS
+        #         Provider: CloudFormation
+        #         Version: 1
+        #       Configuration:
+        #         ActionMode: CREATE_UPDATE
+        #         StackName:
+        #           Fn::Sub: ${ProjectName}-api
+        #         Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+        #         RoleArn:
+        #           Fn::GetAtt: CloudFormationServiceRole.Arn
+        #         TemplatePath:
+        #           Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
+        #         TemplateConfiguration:
+        #           Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
+        #       InputArtifacts:
+        #         - Name: BuildArtifacts
+        #       RunOrder: 1
+
+        #     - Fn::If:
+        #         - RunIntegrationTestsCondition
+        #         - Name: IntegrationTestAPI
+        #           ActionTypeId:
+        #             Category: Build
+        #             Owner: AWS
+        #             Provider: CodeBuild
+        #             Version: 1
+        #           Configuration:
+        #             ProjectName:
+        #               Ref: IntegrationTestAPIProject
+        #           InputArtifacts:
+        #             - Name: SourceCode
+        #           OutputArtifacts:
+        #             - Name: IntegrationTestReport
+        #           RunOrder: 2
+        #         - Ref: AWS::NoValue
 
   # SNS
   CodeCommitUpdateTopic:
