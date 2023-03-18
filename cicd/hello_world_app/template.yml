@@ -106,8 +106,7 @@ Resources:
               - logs:CreateLogGroup
               - logs:CreateLogStream
               - logs:PutLogEvents
-            Resource:
-              - "*"
+            Resource: "*"
           - Sid: ArtifactsBucketObjectsAccess
             Effect: Allow
             Action:
@@ -116,6 +115,12 @@ Resources:
               - s3:PutObject
             Resource:
               - Fn::Sub: ${ArtifactsBucket.Arn}/*
+          - Sid: CodeBuildReportGroupsAccess
+            Effect: Allow
+            Action:
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+            Resource: "*"
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
