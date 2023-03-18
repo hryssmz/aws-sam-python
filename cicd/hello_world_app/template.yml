@@ -370,7 +370,7 @@ Resources:
                     RoleArn:
                       Fn::GetAtt: CloudFormationServiceRole.Arn
                     TemplatePath:
-                      Fn::Sub: BuildArtifacts::${CicdTemplatePath}
+                      Fn::Sub: SourceCode::${CicdTemplatePath}
                   InputArtifacts:
                     - Name: SourceCode
                   RunOrder: 1
