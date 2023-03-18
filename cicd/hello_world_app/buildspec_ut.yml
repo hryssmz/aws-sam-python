@@ -15,5 +15,10 @@ phases:
 
 artifacts:
   files:
-    - coverage.xml
-    - htmlcov
+    - htmlcov/**/*
+
+reports:
+  coverage-report:
+    files:
+      - coverage.xml
+    file-format: JUNITXML

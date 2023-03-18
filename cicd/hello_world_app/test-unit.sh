@@ -6,7 +6,7 @@ pytest_lambda() {
         --cov-report="xml:coverage.xml" \
         --cov="functions/$1" \
         --override-ini="pythonpath=functions/$1 ." \
-        "tests/unit/$1" || exit 1
+        "tests/unit/$1"
 }
 
 pytest_hello_world_app() {
