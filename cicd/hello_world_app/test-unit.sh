@@ -1,7 +1,6 @@
 #!/bin/sh
 APP_NAME="hello_world_app"
 
-mkdir -p "tests/${APP_NAME}/report/log/$1"
 pytest \
     --override-ini="pythonpath=functions/${APP_NAME}/$1 ." \
     --log-file-level=INFO \
