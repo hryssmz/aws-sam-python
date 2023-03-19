@@ -8,13 +8,12 @@ phases:
       - pip install jsonschema
   build:
     commands:
-      - TEMPLATE_PATH="templates/${APP_NAME}/template.yml"
       - OPENAPI_PATH="templates/${APP_NAME}/openapi.yml"
       - OPENAPI_MD5="`md5sum ${OPENAPI_PATH} | awk '{print $1}'`"
       - API_DEFINITION_LOCATION="s3://${S3_BUCKET}/openapi/${OPENAPI_MD5}.yml"
-      - sam build --debug -t ${TEMPLATE_PATH}
+      - sam build -t "templates/${APP_NAME}/template.yml"
       - aws s3 cp ${OPENAPI_PATH} ${API_DEFINITION_LOCATION}
-      - sam package --debug -t ${TEMPLATE_PATH} --s3-bucket ${S3_BUCKET} --s3-prefix sam-package/${APP_NAME} --output-template-file ${PACKAGED_TEMPALTE_PATH}
+      - sam package --s3-bucket ${S3_BUCKET} --s3-prefix sam-package/${APP_NAME} --output-template-file ${PACKAGED_TEMPALTE_PATH}
       - |
         cat - <<EOF > ${TEMPLATE_CONFIGURATION_PATH}
         {

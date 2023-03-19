@@ -19,7 +19,7 @@ LOG_DIR = "reports/s3_app/log/delete_object"
 
 class TestNoContent:
     def test_1(self, clear_my_bucket: None, mocker: MockerFixture) -> None:
-        test_id = "TestCreated.test_1"
+        test_id = "TestNoContent.test_1"
         logger = get_test_logger(LOG_DIR, test_id)
         mocker.patch("logging.getLogger", return_value=logger)
 

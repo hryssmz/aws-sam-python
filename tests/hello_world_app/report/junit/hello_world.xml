@@ -1,1 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.203" timestamp="2023-03-19T14:08:52.064330" hostname="smz"><testcase classname="tests.hello_world_app.hello_world.test_unit" name="test_ok" time="0.004" /></testsuite></testsuites>
