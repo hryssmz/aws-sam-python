@@ -1,0 +1,37 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install aws_lambda_typing
+      - pip install boto3
+      - pip install jsonschema
+      - pip install pytest
+      - pip install pytest-cov
+      - pip install pytest-mock
+  build:
+    commands:
+      - ./buildspecs/${APP_NAME}/test-unit.sh create_object
+      - ./buildspecs/${APP_NAME}/test-unit.sh delete_object
+      - ./buildspecs/${APP_NAME}/test-unit.sh get_object
+      - ./buildspecs/${APP_NAME}/test-unit.sh list_objects
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: reports/${APP_NAME}
+
+reports:
+  coverage:
+    files:
+      - coverage.xml
+    base-directory: reports/${APP_NAME}
+    file-format: COBERTURAXML
+
+  test:
+    files:
+      - "*.xml"
+    base-directory: reports/${APP_NAME}/junit
+    file-format: JUNITXML

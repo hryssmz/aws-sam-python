@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: aws-sam-python infra stack
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+  RCU:
+    Type: Number
+    Description: DynamoDB read capacity units
+    Default: 3
+    MinValue: 1
+    MaxValue: 5
+    ConstraintDescription: must be an integer between 1 and 5
+
+  WCU:
+    Type: Number
+    Description: DynamoDB write capacity units
+    Default: 3
+    MinValue: 1
+    MaxValue: 5
+    ConstraintDescription: must be an integer between 1 and 5
+
+Resources:
+  TodoTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName:
+        Fn::Sub: ${ProjectName}-todo-table
+      PrimaryKey:
+        Name: id
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits:
+          Ref: RCU
+        WriteCapacityUnits:
+          Ref: WCU
+      Tags:
+        ProjectName:
+          Ref: ProjectName
+
+  TodoTableReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${TodoTable}-read-policy
+      Description: TodoTable read policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TodoTableReadOnlyAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Scan
+            Resource:
+              - Fn::GetAtt: TodoTable.Arn
+
+  TodoTableWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${TodoTable}-write-policy
+      Description: TodoTable write policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: TodoTableWriteOnlyAccess
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+            Resource:
+              - Fn::GetAtt: TodoTable.Arn
+
+Outputs:
+  TodoTable:
+    Value:
+      Ref: TodoTable
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-todo-table
+
+  TodoTableReadPolicy:
+    Value:
+      Ref: TodoTableReadPolicy
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-todo-table-read-policy
+
+  TodoTableWritePolicy:
+    Value:
+      Ref: TodoTableWritePolicy
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-todo-table-write-policy

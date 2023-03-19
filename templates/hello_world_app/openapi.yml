@@ -1,0 +1,56 @@
+openapi: "3.0.1"
+info:
+  title: My REST API
+  version: "1.0"
+
+servers:
+  - url: https://{restApiId}.execute-api.{region}.amazonaws.com/{basePath}
+    variables:
+      restApiId:
+        default: example123
+      region:
+        default: ap-northeast-1
+      basePath:
+        default: dev
+
+paths:
+  /:
+    get:
+      operationId: HelloWorld
+      tags:
+        - HelloWorld
+      responses:
+        "200":
+          description: 200 OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelloWorldResponse"
+          headers:
+            Access-Control-Allow-Origin:
+              $ref: "#/components/headers/Access-Control-Allow-Origin"
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        uri:
+          Fn::Sub: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HelloWorldFunction.Arn}/invocations
+        httpMethod: POST
+
+components:
+  schemas:
+    HelloWorldResponse:
+      description: Response body for GET /
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+      example:
+        message: Hello World!
+
+  headers:
+    Access-Control-Allow-Origin:
+      description: Response header for CORS support
+      schema:
+        type: string
+        example: "*"

@@ -1,0 +1,697 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: aws-sam-python CI/CD stack
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+  DeploymentBranch:
+    Type: String
+    Description: CodeCommit branch to deploy
+    Default: main
+
+  AppName:
+    Type: String
+    Description: App name
+    Default: hello_world_app
+
+  PackagedTemplatePath:
+    Type: String
+    Description: Path for the packaged CloudFormation template file
+    Default: packaged-template.yml
+
+  TemplateConfigurationPath:
+    Type: String
+    Description: Path for the CloudFormation template configuration file
+    Default: template-configuration.json
+
+Resources:
+  # S3
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${ProjectName}-artifacts
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  # CodeCommit
+  CodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryDescription: My main repository
+      RepositoryName:
+        Ref: ProjectName
+      Triggers:
+        - Name: DeploymentBranchUpdateTrigger
+          DestinationArn:
+            Ref: CodeCommitUpdateTopic
+          Branches:
+            - Ref: DeploymentBranch
+          Events:
+            - createReference
+            - updateReference
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  # CodeBuild
+  CodeBuildExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${ProjectName}-codebuild-execution-policy
+      Description: Execution policy for CodeBuild projects
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CloudWatchLogGroupsAccess
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*
+              - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*:log-stream:*
+          - Sid: ArtifactsBucketObjectsAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - Fn::Sub: ${ArtifactsBucket.Arn}/*
+          - Sid: CodeBuildReportGroupsAccess
+            Effect: Allow
+            Action:
+              - codebuild:BatchPutCodeCoverages
+              - codebuild:BatchPutTestCases
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+              - codebuild:UpdateReport
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${ProjectName}-*
+              - Fn::Sub: arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report/${ProjectName}-*:*
+          - Sid: DynamoDBAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-*
+          - Sid: S3Access
+            Effect: Allow
+            Action:
+              - s3:DeleteObject
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:ListBucket
+              - s3:PutObject
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:s3:::${ProjectName}-*
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-codebuild-service-role
+      Description: Service role for CodeBuild
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - Ref: CodeBuildExecutionPolicy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  BuildAPIProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${ProjectName}-build-api
+      Description: Build API project
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec:
+          Fn::Sub: buildspecs/${AppName}/buildspec.yml
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  BuildAPIProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/codebuild/${BuildAPIProject}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  UnitTestAPIProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${ProjectName}-unit-test-api
+      Description: Unit test API project
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec:
+          Fn::Sub: buildspecs/${AppName}/buildspec_ut.yml
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  UnitTestAPICoverageReportGroup:
+    Type: AWS::CodeBuild::ReportGroup
+    Properties:
+      Name:
+        Fn::Sub: ${UnitTestAPIProject}-coverage
+      Type: CODE_COVERAGE
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  UnitTestAPITestReportGroup:
+    Type: AWS::CodeBuild::ReportGroup
+    Properties:
+      Name:
+        Fn::Sub: ${UnitTestAPIProject}-test
+      Type: TEST
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  UnitTestAPIProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/codebuild/${UnitTestAPIProject}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  IntegrationTestAPIProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name:
+        Fn::Sub: ${ProjectName}-integration-test-api
+      Description: Integration test API project
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      ServiceRole:
+        Fn::GetAtt: CodeBuildServiceRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec:
+          Fn::Sub: buildspecs/${AppName}/buildspec_it.yml
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  IntegrationTestAPITestReportGroup:
+    Type: AWS::CodeBuild::ReportGroup
+    Properties:
+      Name:
+        Fn::Sub: ${IntegrationTestAPIProject}-test
+      Type: TEST
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  IntegrationTestAPIProjectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/codebuild/${IntegrationTestAPIProject}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  # CodePipeline
+  CloudFormationServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-cloudformation-service-role
+      Description: Service role for CloudFormation
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  PipelineExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${ProjectName}-pipeline-execution-policy
+      Description: Execution policy for pipeline
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ArtifactsBucketAccess
+            Effect: Allow
+            Action:
+              - s3:GetBucketAcl
+              - s3:GetBucketLocation
+            Resource:
+              - Fn::GetAtt: ArtifactsBucket.Arn
+          - Sid: ArtifactsBucketObjectsAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - Fn::Sub: ${ArtifactsBucket.Arn}/*
+          - Sid: CodeCommitAccess
+            Effect: Allow
+            Action:
+              - codecommit:CancelUploadArchive
+              - codecommit:GetBranch
+              - codecommit:GetCommit
+              - codecommit:GetUploadArchiveStatus
+              - codecommit:UploadArchive
+            Resource:
+              - Fn::GetAtt: CodeCommitRepository.Arn
+          - Sid: CodeBuildAccess
+            Effect: Allow
+            Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+            Resource:
+              - Fn::GetAtt: BuildAPIProject.Arn
+              - Fn::GetAtt: UnitTestAPIProject.Arn
+              - Fn::GetAtt: IntegrationTestAPIProject.Arn
+          - Sid: CloudFormationAccess
+            Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:UpdateStack
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:SetStackPolicy
+              - cloudformation:ValidateTemplate
+            Resource: "*"
+          - Sid: IAMPassRolePermission
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: "*"
+            Condition:
+              StringEqualsIfExists:
+                iam:PassedToService:
+                  - cloudformation.amazonaws.com
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-codepipeline-service-role
+      Description: Service role for CodePipeline
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - Ref: PipelineExecutionPolicy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name:
+        Ref: ProjectName
+      RoleArn:
+        Fn::GetAtt: CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Location:
+          Ref: ArtifactsBucket
+        Type: S3
+      RestartExecutionOnUpdate: true
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: 1
+              Configuration:
+                BranchName:
+                  Ref: DeploymentBranch
+                RepositoryName:
+                  Fn::GetAtt: CodeCommitRepository.Name
+                PollForSourceChanges: false
+              OutputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+
+        - Name: DeployCICD
+          Actions:
+            - Name: DeployCICD
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName:
+                  Fn::Sub: ${ProjectName}-cicd
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
+                TemplatePath:
+                  Fn::Sub: SourceCode::templates/${AppName}/cicd-template.yml
+              InputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+
+        - Name: DeployInfra
+          Actions:
+            - Name: DeployInfra
+              Namespace: DeployInfra
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName:
+                  Fn::Sub: ${ProjectName}-infra
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
+                TemplatePath:
+                  Fn::Sub: SourceCode::templates/${AppName}/infra-template.yml
+              InputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+
+        - Name: UnitTestAPI
+          Actions:
+            - Name: UnitTestAPI
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: UnitTestAPIProject
+                EnvironmentVariables:
+                  Fn::Sub: |
+                    [
+                      {
+                        "name": "APP_NAME",
+                        "value": "${AppName}"
+                      }
+                    ]
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: UnitTestReport
+              RunOrder: 1
+
+        - Name: BuildAPI
+          Actions:
+            - Name: BuildAPI
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: BuildAPIProject
+                EnvironmentVariables:
+                  Fn::Sub: |
+                    [
+                      {
+                        "name": "APP_NAME",
+                        "value": "${AppName}"
+                      },
+                      {
+                        "name": "S3_BUCKET",
+                        "value": "${ArtifactsBucket}"
+                      },
+                      {
+                        "name": "PACKAGED_TEMPALTE_PATH",
+                        "value": "${PackagedTemplatePath}"
+                      },
+                      {
+                        "name": "TEMPLATE_CONFIGURATION_PATH",
+                        "value": "${TemplateConfigurationPath}"
+                      }
+                    ]
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: BuildArtifacts
+              RunOrder: 1
+
+        - Name: DeployAPI
+          Actions:
+            - Name: DeployAPI
+              Namespace: DeployAPI
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName:
+                  Fn::Sub: ${ProjectName}-api
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
+                TemplatePath:
+                  Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
+                TemplateConfiguration:
+                  Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
+              InputArtifacts:
+                - Name: BuildArtifacts
+              RunOrder: 1
+
+        - Name: IntegrationTestAPI
+          Actions:
+            - Name: IntegrationTestAPI
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: IntegrationTestAPIProject
+                EnvironmentVariables:
+                  Fn::Sub: |
+                    [
+                      {
+                        "name": "APP_NAME",
+                        "value": "${AppName}"
+                      },
+                      {
+                        "name": "REST_API_URL",
+                        "value": "#{DeployAPI.RestApiUrl}"
+                      }
+                    ]
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: IntegrationTestReport
+              RunOrder: 1
+
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  # SNS
+  CodeCommitUpdateTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: ${ProjectName}-codecommit-update
+      FifoTopic: false
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  # Lambda
+  StartPipelineFunctionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${ProjectName}-start-pipeline-function-policy
+      Description: Policy for StartPipelineFunction
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: StartPipelinePermission
+            Effect: Allow
+            Action:
+              - codepipeline:StartPipelineExecution
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}
+
+  StartPipelineFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-start-pipeline-function-role
+      Description: Service role for StartPipelineFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: StartPipelineFunctionPolicy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  StartPipelineFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${ProjectName}-start-pipeline
+      Description: Start pipeline function
+      Role:
+        Fn::GetAtt: StartPipelineFunctionRole.Arn
+      Architectures:
+        - arm64
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Environment:
+        Variables:
+          PIPELINE_NAME:
+            Ref: Pipeline
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic:
+              Ref: CodeCommitUpdateTopic
+      InlineCode: |
+        const {
+          CodePipelineClient,
+          StartPipelineExecutionCommand,
+        } = require("@aws-sdk/client-codepipeline");
+
+        exports.handler = async () => {
+          const client = new CodePipelineClient({});
+          const command = new StartPipelineExecutionCommand({
+            name: process.env.PIPELINE_NAME,
+          });
+          const response = await client.send(command);
+          console.log(`Pipeline started: (${response.pipelineExecutionId})`);
+        };
+      Tags:
+        ProjectName:
+          Ref: ProjectName
+
+  StartPipelineFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${StartPipelineFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+Outputs:
+  CodeCommitRepositoryCloneUrlHttp:
+    Value:
+      Fn::GetAtt: CodeCommitRepository.CloneUrlHttp
+
+  CodeCommitRepositoryCloneUrlSsh:
+    Value:
+      Fn::GetAtt: CodeCommitRepository.CloneUrlSsh

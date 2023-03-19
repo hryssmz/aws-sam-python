@@ -7,9 +7,9 @@
       "request": "launch",
       "module": "pytest",
       "args": [
-        "tests/unit/s3_app/list_buckets",
+        "tests/unit/hello_world_app/hello_world",
         "-o",
-        "pythonpath=. functions/s3_app/list_buckets"
+        "pythonpath=. functions/hello_world_app/hello_world"
       ],
       "justMyCode": true
     }

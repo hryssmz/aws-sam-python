@@ -1,0 +1,302 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: aws-sam-python app stack
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+  EnvironmentType:
+    Type: String
+    Description: API Gateway deployment stage
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    ConstraintDescription: must be either 'dev' or 'prod'
+
+  Architecture:
+    Type: String
+    Description: Lambda runtime architecture
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
+    ConstraintDescription: must be either 'arm64' or 'x86_64'
+
+  ApiDefinitionLocation:
+    Type: String
+    Description: S3 URL for OpenAPI definition
+
+Globals:
+  Function:
+    Handler: app.handler
+    Runtime: python3.9
+    Timeout: 10
+    Architectures:
+      - Ref: Architecture
+    Tags:
+      ProjectName:
+        Ref: ProjectName
+
+Resources:
+  # REST API
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Ref: ProjectName
+      Description:
+        Fn::Sub: ${ProjectName} REST API
+      StageName:
+        Ref: EnvironmentType
+      Cors:
+        AllowHeaders: "'*'"
+        AllowMethods: "'*'"
+        AllowOrigin: "'*'"
+      OpenApiVersion: "3.0.1"
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Ref: ApiDefinitionLocation
+      Tags:
+        ProjectName:
+          Ref: ProjectName
+
+  # Lambda functions (REST API)
+  ListObjectsFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-list-objects-function-role
+      Description: Service role for ListObjectsFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  ListObjectsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/s3_app/list_objects
+      FunctionName:
+        Fn::Sub: ${ProjectName}-list-objects
+      Description: List objects function
+      Role:
+        Fn::GetAtt: ListObjectsFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /objects
+            RestApiId:
+              Ref: RestApi
+
+  ListObjectsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ListObjectsFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  CreateObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-create-object-function-role
+      Description: Service role for CreateObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  CreateObjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/s3_app/create_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-create-object
+      Description: Create object function
+      Role:
+        Fn::GetAtt: CreateObjectFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: PUT
+            Path: /objects/{key}
+            RestApiId:
+              Ref: RestApi
+
+  CreateObjectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${CreateObjectFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  GetObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-get-object-function-role
+      Description: Service role for GetObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  GetObjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/s3_app/get_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-get-object
+      Description: Get object function
+      Role:
+        Fn::GetAtt: GetObjectFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /objects/{key}
+            RestApiId:
+              Ref: RestApi
+
+  GetObjectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${GetObjectFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  DeleteObjectFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-delete-object-function-role
+      Description: Service role for DeleteObjectFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  DeleteObjectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/s3_app/delete_object
+      FunctionName:
+        Fn::Sub: ${ProjectName}-delete-object
+      Description: Delete object function
+      Role:
+        Fn::GetAtt: DeleteObjectFunctionRole.Arn
+      Environment:
+        Variables:
+          MY_BUCKET:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: DELETE
+            Path: /objects/{key}
+            RestApiId:
+              Ref: RestApi
+
+  DeleteObjectFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DeleteObjectFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+Outputs:
+  RestApiId:
+    Value:
+      Ref: RestApi
+
+  RestApiUrl:
+    Value:
+      Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}

@@ -1,0 +1,360 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: aws-sam-python app stack
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+  EnvironmentType:
+    Type: String
+    Description: API Gateway deployment stage
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    ConstraintDescription: must be either 'dev' or 'prod'
+
+  Architecture:
+    Type: String
+    Description: Lambda runtime architecture
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
+    ConstraintDescription: must be either 'arm64' or 'x86_64'
+
+  ApiDefinitionLocation:
+    Type: String
+    Description: S3 URL for OpenAPI definition
+
+Globals:
+  Function:
+    Handler: app.handler
+    Runtime: python3.9
+    Timeout: 10
+    Architectures:
+      - Ref: Architecture
+    Tags:
+      ProjectName:
+        Ref: ProjectName
+
+Resources:
+  # REST API
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Ref: ProjectName
+      Description:
+        Fn::Sub: ${ProjectName} REST API
+      StageName:
+        Ref: EnvironmentType
+      Cors:
+        AllowHeaders: "'*'"
+        AllowMethods: "'*'"
+        AllowOrigin: "'*'"
+      OpenApiVersion: "3.0.1"
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location:
+              Ref: ApiDefinitionLocation
+      Tags:
+        ProjectName:
+          Ref: ProjectName
+
+  # Lambda functions (REST API)
+  ListTodosFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-list-todos-function-role
+      Description: Service role for ListTodosFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  ListTodosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/todo_app/list_todos
+      FunctionName:
+        Fn::Sub: ${ProjectName}-list-todos
+      Description: List todos function
+      Role:
+        Fn::GetAtt: ListTodosFunctionRole.Arn
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /todos
+            RestApiId:
+              Ref: RestApi
+
+  ListTodosFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ListTodosFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  CreateTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-create-todo-function-role
+      Description: Service role for CreateTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  CreateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/todo_app/create_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-create-todo
+      Description: Create todo function
+      Role:
+        Fn::GetAtt: CreateTodoFunctionRole.Arn
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: POST
+            Path: /todos
+            RestApiId:
+              Ref: RestApi
+
+  CreateTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${CreateTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  DeleteTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-delete-todo-function-role
+      Description: Service role for DeleteTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  DeleteTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/todo_app/delete_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-delete-todo
+      Description: Delete todo function
+      Role:
+        Fn::GetAtt: DeleteTodoFunctionRole.Arn
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: DELETE
+            Path: /todos/{id}
+            RestApiId:
+              Ref: RestApi
+
+  DeleteTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DeleteTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  UpdateTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-update-toto-function-role
+      Description: Service role for UpdateTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-read-policy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  UpdateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/todo_app/update_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-update-todo
+      Description: Update todo function
+      Role:
+        Fn::GetAtt: UpdateTodoFunctionRole.Arn
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: PUT
+            Path: /todos/{id}
+            RestApiId:
+              Ref: RestApi
+
+  UpdateTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${UpdateTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  GetTodoFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${ProjectName}-get-todo-function-role
+      Description: Service role for GetTodoFunction
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+  GetTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../functions/todo_app/get_todo
+      FunctionName:
+        Fn::Sub: ${ProjectName}-get-todo
+      Description: Get todo function
+      Role:
+        Fn::GetAtt: GetTodoFunctionRole.Arn
+      Environment:
+        Variables:
+          TODO_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /todos/{id}
+            RestApiId:
+              Ref: RestApi
+
+  GetTodoFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${GetTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
+Outputs:
+  RestApiId:
+    Value:
+      Ref: RestApi
+
+  RestApiUrl:
+    Value:
+      Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}

@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install aws_lambda_typing
+      - pip install boto3
+      - pip install jsonschema
+      - pip install pytest
+      - pip install requests
+  build:
+    commands:
+      - ./buildspecs/${APP_NAME}/test-integration.sh create_object
+      - ./buildspecs/${APP_NAME}/test-integration.sh delete_object
+      - ./buildspecs/${APP_NAME}/test-integration.sh get_object
+      - ./buildspecs/${APP_NAME}/test-integration.sh list_objects
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: reports/${APP_NAME}
+
+reports:
+  test:
+    files:
+      - "*.xml"
+    base-directory: reports/${APP_NAME}/junit
+    file-format: JUNITXML

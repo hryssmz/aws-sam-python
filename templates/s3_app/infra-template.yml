@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: aws-sam-python infra stack
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Project name
+    Default: aws-sam-python
+
+Resources:
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${ProjectName}-my-bucket
+
+  MyBucketReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${MyBucket}-read-policy
+      Description: MyBucket read policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: MyBucketReadOnlyAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - Fn::GetAtt: MyBucket.Arn
+              - Fn::Sub: ${MyBucket.Arn}/*
+
+  MyBucketWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:
+        Fn::Sub: ${MyBucket}-write-policy
+      Description: MyBucket write policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: MyBucketWriteOnlyAccess
+            Effect: Allow
+            Action:
+              - s3:DeleteObject
+              - s3:PutObject
+            Resource:
+              - Fn::Sub: ${MyBucket.Arn}/*
+
+Outputs:
+  MyBucket:
+    Value:
+      Ref: MyBucket
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-my-bucket
+
+  MyBucketReadPolicy:
+    Value:
+      Ref: MyBucketReadPolicy
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-my-bucket-read-policy
+
+  MyBucketWritePolicy:
+    Value:
+      Ref: MyBucketWritePolicy
+    Export:
+      Name:
+        Fn::Sub: ${ProjectName}-my-bucket-write-policy
