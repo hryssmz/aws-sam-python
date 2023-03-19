@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: Sample SAM App
+Description: aws-sam-python app stack
 
 Parameters:
   ProjectName:
@@ -26,22 +26,6 @@ Parameters:
       - x86_64
     ConstraintDescription: must be either 'arm64' or 'x86_64'
 
-  RCU:
-    Type: Number
-    Description: DynamoDB read capacity units
-    Default: 3
-    MinValue: 1
-    MaxValue: 5
-    ConstraintDescription: must be an integer between 1 and 5
-
-  WCU:
-    Type: Number
-    Description: DynamoDB write capacity units
-    Default: 3
-    MinValue: 1
-    MaxValue: 5
-    ConstraintDescription: must be an integer between 1 and 5
-
   ApiDefinitionLocation:
     Type: String
     Description: S3 URL for OpenAPI definition
@@ -55,20 +39,6 @@ Globals:
       - Ref: Architecture
 
 Resources:
-  TodoTable:
-    Type: AWS::Serverless::SimpleTable
-    Properties:
-      TableName:
-        Fn::Sub: ${ProjectName}-todo-table
-      PrimaryKey:
-        Name: id
-        Type: String
-      ProvisionedThroughput:
-        ReadCapacityUnits:
-          Ref: RCU
-        WriteCapacityUnits:
-          Ref: WCU
-
   # REST API
   RestApi:
     Type: AWS::Serverless::Api
@@ -108,7 +78,8 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: TodoTableReadPolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-read-policy
 
   ListTodosFunction:
     Type: AWS::Serverless::Function
@@ -122,7 +93,8 @@ Resources:
       Environment:
         Variables:
           TODO_TABLE:
-            Ref: TodoTable
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
       Events:
         ApiEvent:
           Type: Api
@@ -154,7 +126,8 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: TodoTableWritePolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-write-policy
 
   CreateTodoFunction:
     Type: AWS::Serverless::Function
@@ -168,7 +141,8 @@ Resources:
       Environment:
         Variables:
           TODO_TABLE:
-            Ref: TodoTable
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
       Events:
         ApiEvent:
           Type: Api
@@ -200,7 +174,8 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: TodoTableWritePolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-write-policy
 
   DeleteTodoFunction:
     Type: AWS::Serverless::Function
@@ -214,7 +189,8 @@ Resources:
       Environment:
         Variables:
           TODO_TABLE:
-            Ref: TodoTable
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
       Events:
         ApiEvent:
           Type: Api
@@ -246,8 +222,10 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: TodoTableReadPolicy
-        - Ref: TodoTableWritePolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-read-policy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-write-policy
 
   UpdateTodoFunction:
     Type: AWS::Serverless::Function
@@ -261,7 +239,8 @@ Resources:
       Environment:
         Variables:
           TODO_TABLE:
-            Ref: TodoTable
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
       Events:
         ApiEvent:
           Type: Api
@@ -293,7 +272,8 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: TodoTableReadPolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-todo-table-read-policy
 
   GetTodoFunction:
     Type: AWS::Serverless::Function
@@ -307,7 +287,8 @@ Resources:
       Environment:
         Variables:
           TODO_TABLE:
-            Ref: TodoTable
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-todo-table
       Events:
         ApiEvent:
           Type: Api
@@ -323,46 +304,6 @@ Resources:
       LogGroupName:
         Fn::Sub: /aws/lambda/${GetTodoFunction}
 
-  # Permissions
-  TodoTableReadPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName:
-        Fn::Sub: ${TodoTable}-read-policy
-      Description: TodoTable read policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: TodoTableReadOnlyAccess
-            Effect: Allow
-            Action:
-              - dynamodb:GetItem
-              - dynamodb:Scan
-              - dynamodb:Query
-              - dynamodb:BatchGetItem
-              - dynamodb:DescribeTable
-            Resource:
-              - Fn::GetAtt: TodoTable.Arn
-
-  TodoTableWritePolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName:
-        Fn::Sub: ${TodoTable}-write-policy
-      Description: TodoTable write policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: TodoTableWriteOnlyAccess
-            Effect: Allow
-            Action:
-              - dynamodb:PutItem
-              - dynamodb:UpdateItem
-              - dynamodb:BatchWriteItem
-              - dynamodb:DeleteItem
-            Resource:
-              - Fn::GetAtt: TodoTable.Arn
-
 Outputs:
   RestApiId:
     Value:
@@ -371,7 +312,3 @@ Outputs:
   RestApiUrl:
     Value:
       Fn::Sub: https://${RestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${RestApi.Stage}
-
-  TodoTableName:
-    Value:
-      Ref: TodoTable

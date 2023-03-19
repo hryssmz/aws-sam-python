@@ -9,9 +9,6 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger = create_logger(context.function_name)
     logger.info("Event: " + json_serialize(event))
 
-    if event is not None:
-        print(1)
-
     response = {
         **APIGW_RESPONSE,
         "statusCode": HTTPStatus.OK,
