@@ -16,7 +16,7 @@ phases:
       - pip install pytest-cov
   build:
     commands:
-      - ./cicd/${APP_NAME}/test-unit.sh
+      - ./cicd/${APP_NAME}/test-unit.sh hello_world
       - ":"
 
 artifacts:
