@@ -11,6 +11,8 @@ phases:
       python: 3.9
   build:
     commands:
+      - echo ${TEMPLATE_PATH}
+      - echo ${OPENAPI_PATH}
       - OPENAPI_MD5=`md5sum ${OPENAPI_PATH} | awk '{print $1}'`
       - API_DEFINITION_LOCATION="s3://${S3_BUCKET}/openapi/${OPENAPI_MD5}.yml"
       - sam build -t ${TEMPLATE_PATH}
