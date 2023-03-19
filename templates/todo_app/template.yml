@@ -60,6 +60,9 @@ Resources:
           Parameters:
             Location:
               Ref: ApiDefinitionLocation
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   # Lambda functions (REST API)
   ListTodosFunctionRole:
@@ -80,6 +83,10 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - Fn::ImportValue:
             Fn::Sub: ${ProjectName}-todo-table-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   ListTodosFunction:
     Type: AWS::Serverless::Function
@@ -103,12 +110,19 @@ Resources:
             Path: /todos
             RestApiId:
               Ref: RestApi
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   ListTodosFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${ListTodosFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   CreateTodoFunctionRole:
     Type: AWS::IAM::Role
@@ -128,6 +142,10 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - Fn::ImportValue:
             Fn::Sub: ${ProjectName}-todo-table-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   CreateTodoFunction:
     Type: AWS::Serverless::Function
@@ -151,12 +169,19 @@ Resources:
             Path: /todos
             RestApiId:
               Ref: RestApi
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   CreateTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${CreateTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   DeleteTodoFunctionRole:
     Type: AWS::IAM::Role
@@ -176,6 +201,10 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - Fn::ImportValue:
             Fn::Sub: ${ProjectName}-todo-table-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   DeleteTodoFunction:
     Type: AWS::Serverless::Function
@@ -199,12 +228,19 @@ Resources:
             Path: /todos/{id}
             RestApiId:
               Ref: RestApi
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   DeleteTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${DeleteTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   UpdateTodoFunctionRole:
     Type: AWS::IAM::Role
@@ -226,6 +262,10 @@ Resources:
             Fn::Sub: ${ProjectName}-todo-table-read-policy
         - Fn::ImportValue:
             Fn::Sub: ${ProjectName}-todo-table-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   UpdateTodoFunction:
     Type: AWS::Serverless::Function
@@ -249,12 +289,19 @@ Resources:
             Path: /todos/{id}
             RestApiId:
               Ref: RestApi
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   UpdateTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${UpdateTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   GetTodoFunctionRole:
     Type: AWS::IAM::Role
@@ -274,6 +321,10 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - Fn::ImportValue:
             Fn::Sub: ${ProjectName}-todo-table-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   GetTodoFunction:
     Type: AWS::Serverless::Function
@@ -297,12 +348,19 @@ Resources:
             Path: /todos/{id}
             RestApiId:
               Ref: RestApi
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   GetTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${GetTodoFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
 Outputs:
   RestApiId:

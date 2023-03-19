@@ -4,9 +4,8 @@ import json
 import os
 from typing import Any
 
-import jsonschema
-
 import boto3
+import jsonschema
 from utils import APIGW_RESPONSE, create_logger, json_serialize
 
 PUT_OBJECT_REQUEST = {

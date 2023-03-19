@@ -1,7 +1,6 @@
 # unit/s3_app/delete_object/test_app.py
 from http import HTTPStatus
 
-
 from functions.s3_app.delete_object import app
 from tests.unit.s3_app.consts import TEST_S3_BODY, TEST_S3_KEY
 from tests.unit.s3_app.testutils import get_my_bucket, list_objects

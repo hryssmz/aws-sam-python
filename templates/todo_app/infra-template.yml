@@ -38,6 +38,9 @@ Resources:
           Ref: RCU
         WriteCapacityUnits:
           Ref: WCU
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   TodoTableReadPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -53,9 +56,6 @@ Resources:
             Action:
               - dynamodb:GetItem
               - dynamodb:Scan
-              - dynamodb:Query
-              - dynamodb:BatchGetItem
-              - dynamodb:DescribeTable
             Resource:
               - Fn::GetAtt: TodoTable.Arn
 
@@ -73,7 +73,6 @@ Resources:
             Action:
               - dynamodb:PutItem
               - dynamodb:UpdateItem
-              - dynamodb:BatchWriteItem
               - dynamodb:DeleteItem
             Resource:
               - Fn::GetAtt: TodoTable.Arn

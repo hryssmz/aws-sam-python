@@ -112,6 +112,10 @@ Resources:
     Properties:
       BucketName:
         Fn::Sub: ${ProjectName}-artifacts
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   # CodeCommit
   CodeCommitRepository:
@@ -129,6 +133,10 @@ Resources:
           Events:
             - createReference
             - updateReference
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   # CodeBuild
   CodeBuildExecutionPolicy:
@@ -164,6 +172,19 @@ Resources:
               - codebuild:CreateReport
               - codebuild:UpdateReport
             Resource: "*"
+          - Sid: DynamoDBAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:ResourceTag/ProjectName:
+                  Ref: ProjectName
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -181,6 +202,10 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - Ref: CodeBuildExecutionPolicy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   BuildAPIProject:
     Type: AWS::CodeBuild::Project
@@ -200,12 +225,20 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec:
           Ref: BuildSpecPath
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   BuildAPIProjectLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/codebuild/${BuildAPIProject}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   UnitTestAPIProject:
     Type: AWS::CodeBuild::Project
@@ -225,6 +258,10 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec:
           Ref: UnitTestBuildSpecPath
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   UnitTestAPICoverageReportGroup:
     Type: AWS::CodeBuild::ReportGroup
@@ -235,6 +272,10 @@ Resources:
       DeleteReports: true
       ExportConfig:
         ExportConfigType: NO_EXPORT
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   UnitTestAPITestReportGroup:
     Type: AWS::CodeBuild::ReportGroup
@@ -245,12 +286,20 @@ Resources:
       DeleteReports: true
       ExportConfig:
         ExportConfigType: NO_EXPORT
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   UnitTestAPIProjectLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/codebuild/${UnitTestAPIProject}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   IntegrationTestAPIProject:
     Type: AWS::CodeBuild::Project
@@ -270,12 +319,20 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec:
           Ref: IntegrationTestBuildSpecPath
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   IntegrationTestAPIProjectLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/codebuild/${IntegrationTestAPIProject}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   # CodePipeline
   CloudFormationServiceRole:
@@ -294,6 +351,10 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   PipelineExecutionPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -378,6 +439,10 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - Ref: PipelineExecutionPolicy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -599,6 +664,10 @@ Resources:
                   RunOrder: 1
                 - Ref: AWS::NoValue
             - Ref: AWS::NoValue
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   # SNS
   CodeCommitUpdateTopic:
@@ -607,6 +676,10 @@ Resources:
       TopicName:
         Fn::Sub: ${ProjectName}-codecommit-update
       FifoTopic: false
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   # Lambda
   StartPipelineFunctionPolicy:
@@ -642,6 +715,10 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - Ref: StartPipelineFunctionPolicy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   StartPipelineFunction:
     Type: AWS::Serverless::Function
@@ -679,12 +756,19 @@ Resources:
           const response = await client.send(command);
           console.log(`Pipeline started: (${response.pipelineExecutionId})`);
         };
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   StartPipelineFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${StartPipelineFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
 Outputs:
   CodeCommitRepositoryCloneUrlHttp:
