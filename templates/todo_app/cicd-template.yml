@@ -501,15 +501,15 @@ Resources:
                       },
                       {
                         "name": "S3_BUCKET",
-                        "value": "${ArtifactsBucket}",
+                        "value": "${ArtifactsBucket}"
                       },
                       {
                         "name": "PACKAGED_TEMPALTE_PATH",
-                        "value": "${PackagedTemplatePath}",
+                        "value": "${PackagedTemplatePath}"
                       },
                       {
                         "name": "TEMPLATE_CONFIGURATION_PATH",
-                        "value": "${TemplateConfigurationPath}",
+                        "value": "${TemplateConfigurationPath}"
                       }
                     ]
               InputArtifacts:
