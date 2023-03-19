@@ -9,25 +9,19 @@ phases:
       - pip install boto3
       - pip install jsonschema
       - pip install pytest
-      - pip install pytest-cov
+      - pip install requests
   build:
     commands:
-      - ./cicd/${APP_NAME}/test-unit.sh hello_world
+      - ./buildspecs/${APP_NAME}/test-integration.sh hello_world
 
 artifacts:
   files:
     - "**/*"
-  base-directory: tests/${APP_NAME}/report
+  base-directory: reports/${APP_NAME}
 
 reports:
-  coverage:
-    files:
-      - "*.xml"
-    base-directory: tests/${APP_NAME}/report/cobertura
-    file-format: COBERTURAXML
-
   test:
     files:
       - "*.xml"
-    base-directory: tests/${APP_NAME}/report/junit
+    base-directory: reports/${APP_NAME}/junit
     file-format: JUNITXML

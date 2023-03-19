@@ -37,6 +37,9 @@ Globals:
     Timeout: 10
     Architectures:
       - Ref: Architecture
+    Tags:
+      ProjectName:
+        Ref: ProjectName
 
 Resources:
   # REST API
@@ -60,6 +63,9 @@ Resources:
           Parameters:
             Location:
               Ref: ApiDefinitionLocation
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   # Lambda functions (REST API)
   HelloWorldFunctionRole:
@@ -78,6 +84,10 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   HelloWorldFunction:
     Type: AWS::Serverless::Function
@@ -102,6 +112,10 @@ Resources:
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${HelloWorldFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
 Outputs:
   RestApiId:
