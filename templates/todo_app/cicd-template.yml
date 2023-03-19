@@ -477,7 +477,7 @@ Resources:
                         [
                           {
                             "name": "APP_NAME",
-                            "value": "${AppName}",
+                            "value": "${AppName}"
                           },
                           {
                             "name": "TODO_TABLE",
@@ -510,7 +510,7 @@ Resources:
                         [
                           {
                             "name": "APP_NAME",
-                            "value": "${AppName}",
+                            "value": "${AppName}"
                           },
                           {
                             "name": "S3_BUCKET",
@@ -581,7 +581,7 @@ Resources:
                         [
                           {
                             "name": "APP_NAME",
-                            "value": "${AppName}",
+                            "value": "${AppName}"
                           },
                           {
                             "name": "TODO_TABLE",
