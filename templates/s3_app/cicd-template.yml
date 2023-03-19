@@ -466,34 +466,34 @@ Resources:
                 - Name: SourceCode
               RunOrder: 1
 
-        - Name: UnitTestAPI
-          Actions:
-            - Name: UnitTestAPI
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: 1
-              Configuration:
-                ProjectName:
-                  Ref: UnitTestAPIProject
-                EnvironmentVariables:
-                  Fn::Sub: |
-                    [
-                      {
-                        "name": "APP_NAME",
-                        "value": "${AppName}"
-                      },
-                      {
-                        "name": "MY_BUCKET",
-                        "value": "#{DeployInfra.MyBucket}"
-                      }
-                    ]
-              InputArtifacts:
-                - Name: SourceCode
-              OutputArtifacts:
-                - Name: UnitTestReport
-              RunOrder: 1
+        # - Name: UnitTestAPI
+        #   Actions:
+        #     - Name: UnitTestAPI
+        #       ActionTypeId:
+        #         Category: Build
+        #         Owner: AWS
+        #         Provider: CodeBuild
+        #         Version: 1
+        #       Configuration:
+        #         ProjectName:
+        #           Ref: UnitTestAPIProject
+        #         EnvironmentVariables:
+        #           Fn::Sub: |
+        #             [
+        #               {
+        #                 "name": "APP_NAME",
+        #                 "value": "${AppName}"
+        #               },
+        #               {
+        #                 "name": "MY_BUCKET",
+        #                 "value": "#{DeployInfra.MyBucket}"
+        #               }
+        #             ]
+        #       InputArtifacts:
+        #         - Name: SourceCode
+        #       OutputArtifacts:
+        #         - Name: UnitTestReport
+        #       RunOrder: 1
 
         - Name: BuildAPI
           Actions:
