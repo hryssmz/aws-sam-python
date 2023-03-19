@@ -8,6 +8,14 @@ Parameters:
     Description: Project name
     Default: aws-sam-python
 
-Resources: {}
-
-Outputs: {}
+Resources:
+  MyTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: ${ProjectName}-my-topic
+      FifoTopic: false
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
