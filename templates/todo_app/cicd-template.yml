@@ -55,8 +55,8 @@ Parameters:
   UnitTestBuildSpecPath:
     Type: String
     Description: CodeBuild buildspec file for unit test
-    Default: "" # don't run unit tests
-    # Default: buildspecs/todo_app/buildspec_ut.yml
+    # Default: "" # don't run unit tests
+    Default: buildspecs/todo_app/buildspec_ut.yml
 
   IntegrationTestBuildSpecPath:
     Type: String
@@ -481,7 +481,7 @@ Resources:
                           },
                           {
                             "name": "TODO_TABLE",
-                            "value": "${AppName}"
+                            "value": "#{DeployInfra.TodoTable}"
                           },
                         ]
                   InputArtifacts:

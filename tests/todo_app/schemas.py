@@ -1,4 +1,4 @@
-# unit/todo_app/schemas.py
+# todo_app/schemas.py
 EMPTY_OBJECT = {
     "type": "object",
     "properties": {},

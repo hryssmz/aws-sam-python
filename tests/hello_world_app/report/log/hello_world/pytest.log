@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform linux -- Python 3.9.13, pytest-7.2.0, pluggy-1.0.0
+rootdir: /home/hryssmz/mount/projects/aws-sam-python, configfile: setup.cfg
+plugins: cov-4.0.0, mock-3.10.0
+collected 1 item
+
+tests/hello_world_app/hello_world/test_unit.py .                         [100%]
+
+- generated xml file: /home/hryssmz/mount/projects/aws-sam-python/tests/hello_world_app/report/junit/hello_world.xml -
+
+---------- coverage: platform linux, python 3.9.13-final-0 -----------
+Name                                             Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------------
+functions/hello_world_app/hello_world/app.py        10      0      2      1    92%   12->15
+functions/hello_world_app/hello_world/utils.py      11      0      0      0   100%
+--------------------------------------------------------------------------------------------
+TOTAL                                               21      0      2      1    96%
+Coverage HTML written to dir tests/hello_world_app/report/htmlcov/hello_world
+Coverage XML written to file tests/hello_world_app/report/cobertura/hello_world.xml
+
+FAIL Required test coverage of 100.0% not reached. Total coverage: 95.65%
+============================== 1 passed in 0.16s ===============================

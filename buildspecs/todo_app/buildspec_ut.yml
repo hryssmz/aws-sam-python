@@ -10,24 +10,29 @@ phases:
       - pip install jsonschema
       - pip install pytest
       - pip install pytest-cov
+      - pip install pytest-mock
   build:
     commands:
-      - ./cicd/${APP_NAME}/test-unit.sh hello_world
+      - ./buildspecs/${APP_NAME}/test-unit.sh create_todo
+      - ./buildspecs/${APP_NAME}/test-unit.sh delete_todo
+      - ./buildspecs/${APP_NAME}/test-unit.sh get_todo
+      - ./buildspecs/${APP_NAME}/test-unit.sh list_todos
+      - ./buildspecs/${APP_NAME}/test-unit.sh update_todo
 
 artifacts:
   files:
     - "**/*"
-  base-directory: tests/${APP_NAME}/report
+  base-directory: reports/${APP_NAME}
 
 reports:
   coverage:
     files:
       - "*.xml"
-    base-directory: tests/${APP_NAME}/report/cobertura
+    base-directory: reports/${APP_NAME}/cobertura
     file-format: COBERTURAXML
 
   test:
     files:
       - "*.xml"
-    base-directory: tests/${APP_NAME}/report/junit
+    base-directory: reports/${APP_NAME}/junit
     file-format: JUNITXML
