@@ -1,9 +1,5 @@
 version: 0.2
 
-env:
-  variables:
-    APP_NAME: "hello_world_app"
-
 phases:
   install:
     runtime-versions:
@@ -12,9 +8,9 @@ phases:
     commands:
       - OPENAPI_FILENAME="`md5sum openapi.yml | awk '{print $1}'`.yml"
       - API_DEFINITION_LOCATION="s3://${S3_BUCKET}/openapi/${OPENAPI_FILENAME}"
-      - sam build -t templates/${APP_NAME}/template.yml
-      - aws s3 cp templates/${APP_NAME}/openapi.yml ${API_DEFINITION_LOCATION}
-      - sam package --s3-bucket ${S3_BUCKET} --s3-prefix aws-sam --output-template-file ${PACKAGED_TEMPALTE_PATH}
+      - sam build -t ${TEMPLATE_PATH}
+      - aws s3 cp "`dirname ${TEMPLATE_PATH}`/openapi.yml" ${API_DEFINITION_LOCATION}
+      - sam package -t ${TEMPLATE_PATH} --s3-bucket ${S3_BUCKET} --s3-prefix sam-package/${APP_NAME} --output-template-file ${PACKAGED_TEMPALTE_PATH}
       - |
         cat - <<EOF > ${TEMPLATE_CONFIGURATION_PATH}
         {

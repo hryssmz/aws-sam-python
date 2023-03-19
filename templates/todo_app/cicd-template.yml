@@ -13,6 +13,11 @@ Parameters:
     Description: CodeCommit branch to deploy
     Default: main
 
+  AppName:
+    Type: String
+    Description: App name
+    Default: todo_app
+
   PackagedTemplatePath:
     Type: String
     Description: Path for the packaged CloudFormation template file
@@ -84,16 +89,21 @@ Conditions:
               - ""
 
   RunUnitTestsCondition:
-    Fn::Not:
-      - Fn::Equals:
-          - Ref: UnitTestBuildSpecPath
-          - ""
+    Fn::And:
+      - DeployInfraCondition
+      - Fn::Not:
+          - Fn::Equals:
+              - Ref: UnitTestBuildSpecPath
+              - ""
 
   RunIntegrationTestsCondition:
-    Fn::Not:
-      - Fn::Equals:
-          - Ref: IntegrationTestBuildSpecPath
-          - ""
+    Fn::And:
+      - DeployInfraCondition
+      - DeployAppCondition
+      - Fn::Not:
+          - Fn::Equals:
+              - Ref: IntegrationTestBuildSpecPath
+              - ""
 
 Resources:
   # S3
@@ -184,16 +194,6 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-        EnvironmentVariables:
-          - Name: S3_BUCKET
-            Value:
-              Ref: ArtifactsBucket
-          - Name: PACKAGED_TEMPALTE_PATH
-            Value:
-              Ref: PackagedTemplatePath
-          - Name: TEMPLATE_CONFIGURATION_PATH
-            Value:
-              Ref: TemplateConfigurationPath
       ServiceRole:
         Fn::GetAtt: CodeBuildServiceRole.Arn
       Source:
@@ -219,16 +219,6 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-        EnvironmentVariables:
-          - Name: S3_BUCKET
-            Value:
-              Ref: ArtifactsBucket
-          - Name: PACKAGED_TEMPALTE_PATH
-            Value:
-              Ref: PackagedTemplatePath
-          - Name: TEMPLATE_CONFIGURATION_PATH
-            Value:
-              Ref: TemplateConfigurationPath
       ServiceRole:
         Fn::GetAtt: CodeBuildServiceRole.Arn
       Source:
@@ -449,6 +439,7 @@ Resources:
             - Name: DeployInfra
               Actions:
                 - Name: DeployInfra
+                  NameSpace: DeployInfra
                   ActionTypeId:
                     Category: Deploy
                     Owner: AWS
@@ -481,6 +472,18 @@ Resources:
                   Configuration:
                     ProjectName:
                       Ref: UnitTestAPIProject
+                    EnvironmentVariables:
+                      Fn::Sub: |
+                        [
+                          {
+                            "name": "APP_NAME",
+                            "value": "${AppName}",
+                          },
+                          {
+                            "name": "TODO_TABLE",
+                            "value": "${AppName}"
+                          },
+                        ]
                   InputArtifacts:
                     - Name: SourceCode
                   OutputArtifacts:
@@ -502,6 +505,30 @@ Resources:
                   Configuration:
                     ProjectName:
                       Ref: BuildAPIProject
+                    EnvironmentVariables:
+                      Fn::Sub: |
+                        [
+                          {
+                            "name": "APP_NAME",
+                            "value": "${AppName}",
+                          },
+                          {
+                            "name": "S3_BUCKET",
+                            "value": "${ArtifactsBucket}",
+                          },
+                          {
+                            "name": "TEMPLATE_PATH",
+                            "value": "${AppTemplatePath}",
+                          },
+                          {
+                            "name": "PACKAGED_TEMPALTE_PATH",
+                            "value": "${PackagedTemplatePath}",
+                          },
+                          {
+                            "name": "TEMPLATE_CONFIGURATION_PATH",
+                            "value": "${TemplateConfigurationPath}",
+                          }
+                        ]
                   InputArtifacts:
                     - Name: SourceCode
                   OutputArtifacts:

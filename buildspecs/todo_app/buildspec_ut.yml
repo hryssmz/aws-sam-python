@@ -1,9 +1,5 @@
 version: 0.2
 
-env:
-  variables:
-    APP_NAME: "todo_app"
-
 phases:
   install:
     runtime-versions:
