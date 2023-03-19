@@ -1,21 +1,14 @@
 #!/bin/sh
-pytest_lambda() {
-    mkdir -p "tests/$1/report/log/$2"
-    pytest \
-        --override-ini="pythonpath=functions/$1/$2 ." \
-        --log-file-level=INFO \
-        --log-file="tests/$1/report/log/$2/test_unit.log" \
-        --junitxml="tests/$1/report/junit/$2.xml" \
-        --cov-report=term \
-        --cov-report="html:tests/$1/report/htmlcov/$2" \
-        --cov-report="xml:tests/$1/report/cobertura/$2.xml" \
-        --cov="functions/$1/$2" \
-        "tests/$1/$2/test_unit.py" |
-            tee "tests/$1/report/log/$2/pytest.log"
-}
+APP_NAME="hello_world_app"
 
-pytest_hello_world_app() {
-    pytest_lambda hello_world_app hello_world
-}
-
-pytest_hello_world_app
+mkdir -p "tests/${APP_NAME}/report/log/$1"
+pytest \
+    --override-ini="pythonpath=functions/${APP_NAME}/$1 ." \
+    --log-file-level=INFO \
+    --log-file="tests/${APP_NAME}/report/log/$1.log" \
+    --junitxml="tests/${APP_NAME}/report/junit/$1.xml" \
+    --cov-report=term \
+    --cov-report="html:tests/${APP_NAME}/report/htmlcov/$1" \
+    --cov-report="xml:tests/${APP_NAME}/report/cobertura/$1.xml" \
+    --cov="functions/${APP_NAME}/$1" \
+    "tests/${APP_NAME}/$1/test_unit.py"
