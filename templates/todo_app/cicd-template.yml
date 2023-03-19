@@ -28,36 +28,6 @@ Parameters:
     Description: Path for the CloudFormation template configuration file
     Default: template-configuration.json
 
-  CicdTemplatePath:
-    Type: String
-    Description: Path for the CI/CD CloudFormation template file
-    Default: templates/todo_app/cicd-template.yml
-
-  InfraTemplatePath:
-    Type: String
-    Description: Path for the infra CloudFormation template file
-    Default: templates/todo_app/infra-template.yml
-
-  AppTemplatePath:
-    Type: String
-    Description: Path for the app CloudFormation template file
-    Default: templates/todo_app/template.yml
-
-  BuildSpecPath:
-    Type: String
-    Description: CodeBuild buildspec path for building
-    Default: buildspecs/todo_app/buildspec.yml
-
-  UnitTestBuildSpecPath:
-    Type: String
-    Description: CodeBuild buildspec file for unit test
-    Default: buildspecs/todo_app/buildspec_ut.yml
-
-  IntegrationTestBuildSpecPath:
-    Type: String
-    Description: CodeBuild buildspec file for integration test
-    Default: buildspecs/todo_app/buildspec_it.yml
-
 Resources:
   # S3
   ArtifactsBucket:
@@ -110,6 +80,14 @@ Resources:
             Resource:
               - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*
               - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*:log-stream:*
+          - Sid: ArtifactsBucketObjectsAccess
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+            Resource:
+              - Fn::Sub: ${ArtifactsBucket.Arn}/*
           - Sid: CodeBuildReportGroupsAccess
             Effect: Allow
             Action:
@@ -180,7 +158,7 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec:
-          Ref: BuildSpecPath
+          Fn::Sub: buildspecs/${AppName}/buildspec.yml
       Tags:
         - Key: ProjectName
           Value:
@@ -213,7 +191,7 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec:
-          Ref: UnitTestBuildSpecPath
+          Fn::Sub: buildspecs/${AppName}/buildspec_ut.yml
       Tags:
         - Key: ProjectName
           Value:
@@ -274,7 +252,7 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec:
-          Ref: IntegrationTestBuildSpecPath
+          Fn::Sub: buildspecs/${AppName}/buildspec_it.yml
       Tags:
         - Key: ProjectName
           Value:
@@ -447,7 +425,7 @@ Resources:
                 RoleArn:
                   Fn::GetAtt: CloudFormationServiceRole.Arn
                 TemplatePath:
-                  Fn::Sub: SourceCode::${CicdTemplatePath}
+                  Fn::Sub: SourceCode::templates/${AppName}/cicd-template.yml
               InputArtifacts:
                 - Name: SourceCode
               RunOrder: 1
@@ -469,7 +447,7 @@ Resources:
                 RoleArn:
                   Fn::GetAtt: CloudFormationServiceRole.Arn
                 TemplatePath:
-                  Fn::Sub: SourceCode::${InfraTemplatePath}
+                  Fn::Sub: SourceCode::templates/${AppName}/infra-template.yml
               InputArtifacts:
                 - Name: SourceCode
               RunOrder: 1
@@ -503,70 +481,66 @@ Resources:
                 - Name: UnitTestReport
               RunOrder: 1
 
-        # - Name: BuildAPI
-        #   Actions:
-        #     - Name: BuildAPI
-        #       ActionTypeId:
-        #         Category: Build
-        #         Owner: AWS
-        #         Provider: CodeBuild
-        #         Version: 1
-        #       Configuration:
-        #         ProjectName:
-        #           Ref: BuildAPIProject
-        #         EnvironmentVariables:
-        #           Fn::Sub: |
-        #             [
-        #               {
-        #                 "name": "APP_NAME",
-        #                 "value": "${AppName}"
-        #               },
-        #               {
-        #                 "name": "S3_BUCKET",
-        #                 "value": "${ArtifactsBucket}",
-        #               },
-        #               {
-        #                 "name": "TEMPLATE_PATH",
-        #                 "value": "${AppTemplatePath}",
-        #               },
-        #               {
-        #                 "name": "PACKAGED_TEMPALTE_PATH",
-        #                 "value": "${PackagedTemplatePath}",
-        #               },
-        #               {
-        #                 "name": "TEMPLATE_CONFIGURATION_PATH",
-        #                 "value": "${TemplateConfigurationPath}",
-        #               }
-        #             ]
-        #       InputArtifacts:
-        #         - Name: SourceCode
-        #       OutputArtifacts:
-        #         - Name: BuildArtifacts
-        #       RunOrder: 1
+        - Name: BuildAPI
+          Actions:
+            - Name: BuildAPI
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: BuildAPIProject
+                EnvironmentVariables:
+                  Fn::Sub: |
+                    [
+                      {
+                        "name": "APP_NAME",
+                        "value": "${AppName}"
+                      },
+                      {
+                        "name": "S3_BUCKET",
+                        "value": "${ArtifactsBucket}",
+                      },
+                      {
+                        "name": "PACKAGED_TEMPALTE_PATH",
+                        "value": "${PackagedTemplatePath}",
+                      },
+                      {
+                        "name": "TEMPLATE_CONFIGURATION_PATH",
+                        "value": "${TemplateConfigurationPath}",
+                      }
+                    ]
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: BuildArtifacts
+              RunOrder: 1
 
-        # - Name: DeployAPI
-        #   Actions:
-        #     - Name: DeployAPI
-        #       Namespace: DeployAPI
-        #       ActionTypeId:
-        #         Category: Deploy
-        #         Owner: AWS
-        #         Provider: CloudFormation
-        #         Version: 1
-        #       Configuration:
-        #         ActionMode: CREATE_UPDATE
-        #         StackName:
-        #           Fn::Sub: ${ProjectName}-api
-        #         Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
-        #         RoleArn:
-        #           Fn::GetAtt: CloudFormationServiceRole.Arn
-        #         TemplatePath:
-        #           Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
-        #         TemplateConfiguration:
-        #           Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
-        #       InputArtifacts:
-        #         - Name: BuildArtifacts
-        #       RunOrder: 1
+        - Name: DeployAPI
+          Actions:
+            - Name: DeployAPI
+              Namespace: DeployAPI
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName:
+                  Fn::Sub: ${ProjectName}-api
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
+                TemplatePath:
+                  Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
+                TemplateConfiguration:
+                  Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
+              InputArtifacts:
+                - Name: BuildArtifacts
+              RunOrder: 1
 
         # - Name: IntegrationTestAPI
         #   Actions:
