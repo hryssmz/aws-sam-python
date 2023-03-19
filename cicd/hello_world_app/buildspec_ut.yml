@@ -1,4 +1,9 @@
 version: 0.2
+
+env:
+  variables:
+    APP_NAME: "hello_world_app"
+
 phases:
   install:
     runtime-versions:
@@ -11,22 +16,22 @@ phases:
       - pip install pytest-cov
   build:
     commands:
-      - ./cicd/hello_world_app/test-unit.sh
+      - ./cicd/${APP_NAME}/test-unit.sh
 
 artifacts:
   files:
     - "**/*"
-  base-directory: tests/report/htmlcov/hello_world_app
+  base-directory: tests/${APP_NAME}/report/htmlcov
 
 reports:
   coverage:
     files:
-      - tests/report/clover/hello_world_app/*.xml
+      - tests/${APP_NAME}/report/clover/*.xml
     discard-paths: yes
     file-format: COBERTURAXML
 
   test:
     files:
-      - tests/report/junit/hello_world_app/*.xml
+      - tests/${APP_NAME}/report/junit/*.xml
     discard-paths: yes
     file-format: JUNITXML
