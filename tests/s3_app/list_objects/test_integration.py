@@ -1,14 +1,13 @@
-# integration/s3_app/test_list_objects.py
+# s3_app/list_objects/test_integration.py
 from http import HTTPStatus
 import json
+import os
 
 import jsonschema
 import requests
 
-from tests.integration.consts import API_PREFIX
-from tests.unit.s3_app.consts import TEST_S3_BODY, TEST_S3_KEY
-from tests.unit.s3_app.schemas import LIST_OBJECTS_RESPONSE
-from tests.unit.s3_app.testutils import get_my_bucket
+from tests.s3_app.schemas import LIST_OBJECTS_RESPONSE
+from tests.s3_app.testutils import TEST_S3_BODY, TEST_S3_KEY, get_my_bucket
 
 
 def test_list_objects(clear_my_bucket: None) -> None:
@@ -16,7 +15,7 @@ def test_list_objects(clear_my_bucket: None) -> None:
     object = bucket.Object(TEST_S3_KEY)
     object.put(Body=TEST_S3_BODY.encode("utf-8"))
 
-    url = f"{API_PREFIX}/objects"
+    url = f"{os.environ['REST_API_URL']}/objects"
     response = requests.get(url)
     res_body = json.loads(response.text)
 

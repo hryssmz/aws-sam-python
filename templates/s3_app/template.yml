@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: Sample SAM App
+Description: aws-sam-python app stack
 
 Parameters:
   ProjectName:
@@ -37,14 +37,11 @@ Globals:
     Timeout: 10
     Architectures:
       - Ref: Architecture
+    Tags:
+      ProjectName:
+        Ref: ProjectName
 
 Resources:
-  MyBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName:
-        Fn::Sub: ${ProjectName}-mybucket
-
   # REST API
   RestApi:
     Type: AWS::Serverless::Api
@@ -66,6 +63,9 @@ Resources:
           Parameters:
             Location:
               Ref: ApiDefinitionLocation
+      Tags:
+        ProjectName:
+          Ref: ProjectName
 
   # Lambda functions (REST API)
   ListObjectsFunctionRole:
@@ -84,12 +84,17 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: MyBucketReadPolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   ListObjectsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/s3_app/list_objects
+      CodeUri: ../../functions/s3_app/list_objects
       FunctionName:
         Fn::Sub: ${ProjectName}-list-objects
       Description: List objects function
@@ -98,7 +103,8 @@ Resources:
       Environment:
         Variables:
           MY_BUCKET:
-            Ref: MyBucket
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
       Events:
         ApiEvent:
           Type: Api
@@ -113,6 +119,10 @@ Resources:
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${ListObjectsFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   CreateObjectFunctionRole:
     Type: AWS::IAM::Role
@@ -130,12 +140,17 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: MyBucketWritePolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   CreateObjectFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/s3_app/create_object
+      CodeUri: ../../functions/s3_app/create_object
       FunctionName:
         Fn::Sub: ${ProjectName}-create-object
       Description: Create object function
@@ -144,7 +159,8 @@ Resources:
       Environment:
         Variables:
           MY_BUCKET:
-            Ref: MyBucket
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
       Events:
         ApiEvent:
           Type: Api
@@ -159,6 +175,10 @@ Resources:
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${CreateObjectFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   GetObjectFunctionRole:
     Type: AWS::IAM::Role
@@ -176,12 +196,17 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: MyBucketReadPolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-read-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   GetObjectFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/s3_app/get_object
+      CodeUri: ../../functions/s3_app/get_object
       FunctionName:
         Fn::Sub: ${ProjectName}-get-object
       Description: Get object function
@@ -190,7 +215,8 @@ Resources:
       Environment:
         Variables:
           MY_BUCKET:
-            Ref: MyBucket
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
       Events:
         ApiEvent:
           Type: Api
@@ -205,6 +231,10 @@ Resources:
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${GetObjectFunction}
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   DeleteObjectFunctionRole:
     Type: AWS::IAM::Role
@@ -222,12 +252,17 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - Ref: MyBucketWritePolicy
+        - Fn::ImportValue:
+            Fn::Sub: ${ProjectName}-my-bucket-write-policy
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
   DeleteObjectFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/s3_app/delete_object
+      CodeUri: ../../functions/s3_app/delete_object
       FunctionName:
         Fn::Sub: ${ProjectName}-delete-object
       Description: Delete object function
@@ -236,7 +271,8 @@ Resources:
       Environment:
         Variables:
           MY_BUCKET:
-            Ref: MyBucket
+            Fn::ImportValue:
+              Fn::Sub: ${ProjectName}-my-bucket
       Events:
         ApiEvent:
           Type: Api
@@ -251,47 +287,10 @@ Resources:
     Properties:
       LogGroupName:
         Fn::Sub: /aws/lambda/${DeleteObjectFunction}
-
-  # Permissions
-  MyBucketReadPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName:
-        Fn::Sub: ${MyBucket}-read-policy
-      Description: MyBucket read policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: MyBucketReadOnlyAccess
-            Effect: Allow
-            Action:
-              - s3:GetObject
-              - s3:ListBucket
-              - s3:GetBucketLocation
-              - s3:GetObjectVersion
-              - s3:GetLifecycleConfiguration
-            Resource:
-              - Fn::GetAtt: MyBucket.Arn
-              - Fn::Sub: ${MyBucket.Arn}/*
-
-  MyBucketWritePolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName:
-        Fn::Sub: ${MyBucket}-write-policy
-      Description: MyBucket write policy
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: MyBucketWriteOnlyAccess
-            Effect: Allow
-            Action:
-              - s3:PutObject
-              - s3:PutObjectAcl
-              - s3:PutLifecycleConfiguration
-            Resource:
-              - Fn::GetAtt: MyBucket.Arn
-              - Fn::Sub: ${MyBucket.Arn}/*
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
 
 Outputs:
   RestApiId:

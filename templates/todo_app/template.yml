@@ -37,6 +37,9 @@ Globals:
     Timeout: 10
     Architectures:
       - Ref: Architecture
+    Tags:
+      ProjectName:
+        Ref: ProjectName
 
 Resources:
   # REST API
@@ -110,9 +113,6 @@ Resources:
             Path: /todos
             RestApiId:
               Ref: RestApi
-      Tags:
-        ProjectName:
-          Ref: ProjectName
 
   ListTodosFunctionLogGroup:
     Type: AWS::Logs::LogGroup

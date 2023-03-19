@@ -1,12 +1,16 @@
-# integration/s3_app/test_delete_object.py
+# s3_app/delete_object/test_integration.py
 from http import HTTPStatus
+import os
 from urllib.parse import quote
 
 import requests
 
-from tests.integration.consts import API_PREFIX
-from tests.unit.s3_app.consts import TEST_S3_BODY, TEST_S3_KEY
-from tests.unit.s3_app.testutils import get_my_bucket, list_objects
+from tests.s3_app.testutils import (
+    TEST_S3_BODY,
+    TEST_S3_KEY,
+    get_my_bucket,
+    list_objects,
+)
 
 
 def test_delete_object(clear_my_bucket: None) -> None:
@@ -17,7 +21,7 @@ def test_delete_object(clear_my_bucket: None) -> None:
     assert list_objects() == [TEST_S3_KEY]
 
     encoded_key = quote(TEST_S3_KEY, safe="")
-    url = f"{API_PREFIX}/objects/{encoded_key}"
+    url = f"{os.environ['REST_API_URL']}/objects/{encoded_key}"
     response = requests.delete(url)
 
     assert response.status_code == HTTPStatus.NO_CONTENT
