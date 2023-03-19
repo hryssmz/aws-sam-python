@@ -26,12 +26,12 @@ artifacts:
 reports:
   coverage:
     files:
-      - tests/${APP_NAME}/report/clover/*.xml
-    discard-paths: yes
+      - "*.xml"
+    base-directory: tests/${APP_NAME}/report/clover
     file-format: COBERTURAXML
 
   test:
     files:
-      - tests/${APP_NAME}/report/junit/*.xml
-    discard-paths: yes
+      - "*.xml"
+    base-directory: tests/${APP_NAME}/report/junit
     file-format: JUNITXML

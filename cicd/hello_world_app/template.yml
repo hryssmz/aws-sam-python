@@ -118,6 +118,7 @@ Resources:
           - Sid: CodeBuildReportGroupsAccess
             Effect: Allow
             Action:
+              - codebuild:BatchPutCodeCoverages
               - codebuild:BatchPutTestCases
               - codebuild:CreateReportGroup
               - codebuild:CreateReport

@@ -25,4 +25,5 @@ def test_ok() -> None:
 
 
 def test_bad() -> None:
-    assert 0 == 1
+    a = 0
+    assert a == 1
