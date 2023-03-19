@@ -482,7 +482,7 @@ Resources:
                           {
                             "name": "TODO_TABLE",
                             "value": "#{DeployInfra.TodoTable}"
-                          },
+                          }
                         ]
                   InputArtifacts:
                     - Name: SourceCode
@@ -541,6 +541,7 @@ Resources:
             - Name: DeployAPI
               Actions:
                 - Name: DeployAPI
+                  Namespace: DeployAPI
                   ActionTypeId:
                     Category: Deploy
                     Owner: AWS
@@ -575,6 +576,22 @@ Resources:
                   Configuration:
                     ProjectName:
                       Ref: IntegrationTestAPIProject
+                    EnvironmentVariables:
+                      Fn::Sub: |
+                        [
+                          {
+                            "name": "APP_NAME",
+                            "value": "${AppName}",
+                          },
+                          {
+                            "name": "TODO_TABLE",
+                            "value": "#{DeployInfra.TodoTable}"
+                          },
+                          {
+                            "name": "REST_API_URL",
+                            "value": "#{DeployAPI.RestApiUrl}"
+                          }
+                        ]
                   InputArtifacts:
                     - Name: SourceCode
                   OutputArtifacts:
