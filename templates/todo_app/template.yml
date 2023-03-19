@@ -91,7 +91,7 @@ Resources:
   ListTodosFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/todo_app/list_todos
+      CodeUri: ../../functions/todo_app/list_todos
       FunctionName:
         Fn::Sub: ${ProjectName}-list-todos
       Description: List todos function
@@ -150,7 +150,7 @@ Resources:
   CreateTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/todo_app/create_todo
+      CodeUri: ../../functions/todo_app/create_todo
       FunctionName:
         Fn::Sub: ${ProjectName}-create-todo
       Description: Create todo function
@@ -209,7 +209,7 @@ Resources:
   DeleteTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/todo_app/delete_todo
+      CodeUri: ../../functions/todo_app/delete_todo
       FunctionName:
         Fn::Sub: ${ProjectName}-delete-todo
       Description: Delete todo function
@@ -270,7 +270,7 @@ Resources:
   UpdateTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/todo_app/update_todo
+      CodeUri: ../../functions/todo_app/update_todo
       FunctionName:
         Fn::Sub: ${ProjectName}-update-todo
       Description: Update todo function
@@ -329,7 +329,7 @@ Resources:
   GetTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/todo_app/get_todo
+      CodeUri: ../../functions/todo_app/get_todo
       FunctionName:
         Fn::Sub: ${ProjectName}-get-todo
       Description: Get todo function
