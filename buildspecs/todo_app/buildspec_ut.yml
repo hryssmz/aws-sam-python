@@ -27,8 +27,8 @@ artifacts:
 reports:
   coverage:
     files:
-      - "*.xml"
-    base-directory: reports/${APP_NAME}/cobertura
+      - coverage.xml
+    base-directory: reports/${APP_NAME}
     file-format: COBERTURAXML
 
   test:

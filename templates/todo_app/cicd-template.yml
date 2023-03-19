@@ -107,7 +107,9 @@ Resources:
               - logs:CreateLogGroup
               - logs:CreateLogStream
               - logs:PutLogEvents
-            Resource: "*"
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*
+              - Fn::Sub: arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}-*:log-stream:*
           - Sid: CodeBuildReportGroupsAccess
             Effect: Allow
             Action:
@@ -116,7 +118,9 @@ Resources:
               - codebuild:CreateReportGroup
               - codebuild:CreateReport
               - codebuild:UpdateReport
-            Resource: "*"
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${ProjectName}-*
+              - Fn::Sub: arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:report/${ProjectName}-*:*
           - Sid: DynamoDBAccess
             Effect: Allow
             Action:
