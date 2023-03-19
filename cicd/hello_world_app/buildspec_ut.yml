@@ -27,8 +27,8 @@ reports:
   coverage:
     files:
       - "*.xml"
-    base-directory: tests/${APP_NAME}/report/clover
-    file-format: CLOVERXML
+    base-directory: tests/${APP_NAME}/report/cobertura
+    file-format: COBERTURAXML
 
   test:
     files:
