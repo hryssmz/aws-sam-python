@@ -51,21 +51,21 @@ Resources:
               - Fn::Sub: ${MyBucket.Arn}/*
 
 Outputs:
-  TodoTable:
+  MyBucket:
     Value:
       Ref: MyBucket
     Export:
       Name:
         Fn::Sub: ${ProjectName}-my-bucket
 
-  TodoTableReadPolicy:
+  MyBucketReadPolicy:
     Value:
       Ref: MyBucketReadPolicy
     Export:
       Name:
         Fn::Sub: ${ProjectName}-my-bucket-read-policy
 
-  TodoTableWritePolicy:
+  MyBucketWritePolicy:
     Value:
       Ref: MyBucketWritePolicy
     Export:

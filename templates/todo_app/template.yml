@@ -169,9 +169,6 @@ Resources:
             Path: /todos
             RestApiId:
               Ref: RestApi
-      Tags:
-        ProjectName:
-          Ref: ProjectName
 
   CreateTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -228,9 +225,6 @@ Resources:
             Path: /todos/{id}
             RestApiId:
               Ref: RestApi
-      Tags:
-        ProjectName:
-          Ref: ProjectName
 
   DeleteTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -289,9 +283,6 @@ Resources:
             Path: /todos/{id}
             RestApiId:
               Ref: RestApi
-      Tags:
-        ProjectName:
-          Ref: ProjectName
 
   UpdateTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
@@ -348,9 +339,6 @@ Resources:
             Path: /todos/{id}
             RestApiId:
               Ref: RestApi
-      Tags:
-        ProjectName:
-          Ref: ProjectName
 
   GetTodoFunctionLogGroup:
     Type: AWS::Logs::LogGroup
