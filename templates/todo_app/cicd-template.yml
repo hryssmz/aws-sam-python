@@ -90,7 +90,7 @@ Conditions:
 
   RunUnitTestsCondition:
     Fn::And:
-      - DeployInfraCondition
+      - Condition: DeployInfraCondition
       - Fn::Not:
           - Fn::Equals:
               - Ref: UnitTestBuildSpecPath
@@ -98,8 +98,8 @@ Conditions:
 
   RunIntegrationTestsCondition:
     Fn::And:
-      - DeployInfraCondition
-      - DeployAppCondition
+      - Condition: DeployInfraCondition
+      - Condition: DeployAppCondition
       - Fn::Not:
           - Fn::Equals:
               - Ref: IntegrationTestBuildSpecPath
