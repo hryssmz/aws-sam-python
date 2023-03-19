@@ -258,6 +258,20 @@ Resources:
           Value:
             Ref: ProjectName
 
+  IntegrationTestAPITestReportGroup:
+    Type: AWS::CodeBuild::ReportGroup
+    Properties:
+      Name:
+        Fn::Sub: ${IntegrationTestAPIProject}-test
+      Type: TEST
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+      Tags:
+        - Key: ProjectName
+          Value:
+            Ref: ProjectName
+
   IntegrationTestAPIProjectLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -542,38 +556,38 @@ Resources:
                 - Name: BuildArtifacts
               RunOrder: 1
 
-        # - Name: IntegrationTestAPI
-        #   Actions:
-        #     - Name: IntegrationTestAPI
-        #       ActionTypeId:
-        #         Category: Build
-        #         Owner: AWS
-        #         Provider: CodeBuild
-        #         Version: 1
-        #       Configuration:
-        #         ProjectName:
-        #           Ref: IntegrationTestAPIProject
-        #         EnvironmentVariables:
-        #           Fn::Sub: |
-        #             [
-        #               {
-        #                 "name": "APP_NAME",
-        #                 "value": "${AppName}"
-        #               },
-        #               {
-        #                 "name": "TODO_TABLE",
-        #                 "value": "#{DeployInfra.TodoTable}"
-        #               },
-        #               {
-        #                 "name": "REST_API_URL",
-        #                 "value": "#{DeployAPI.RestApiUrl}"
-        #               }
-        #             ]
-        #       InputArtifacts:
-        #         - Name: SourceCode
-        #       OutputArtifacts:
-        #         - Name: IntegrationTestReport
-        #       RunOrder: 1
+        - Name: IntegrationTestAPI
+          Actions:
+            - Name: IntegrationTestAPI
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: IntegrationTestAPIProject
+                EnvironmentVariables:
+                  Fn::Sub: |
+                    [
+                      {
+                        "name": "APP_NAME",
+                        "value": "${AppName}"
+                      },
+                      {
+                        "name": "TODO_TABLE",
+                        "value": "#{DeployInfra.TodoTable}"
+                      },
+                      {
+                        "name": "REST_API_URL",
+                        "value": "#{DeployAPI.RestApiUrl}"
+                      }
+                    ]
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: IntegrationTestReport
+              RunOrder: 1
 
       Tags:
         - Key: ProjectName

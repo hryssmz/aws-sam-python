@@ -1,18 +1,19 @@
-# integration/todo_app/test_list_todos.py
+# todo_app/list_todos/test_integration.py
 from http import HTTPStatus
 import json
+import os
 
 import jsonschema
 import requests
 
-from tests.integration.consts import API_PREFIX
-from tests.unit.todo_app.consts import (
+from tests.todo_app.schemas import LIST_TODOS_RESPONSE
+from tests.todo_app.testutils import (
     TODO_DESCRIPTION,
     TODO_NAME,
     TODO_PRIORITY,
+    create_todo,
+    list_todos,
 )
-from tests.unit.todo_app.schemas import LIST_TODOS_RESPONSE
-from tests.unit.todo_app.testutils import create_todo, list_todos
 
 
 def test_list_todos(clear_todos: None) -> None:
@@ -25,7 +26,7 @@ def test_list_todos(clear_todos: None) -> None:
 
     assert len(list_todos()) == 1
 
-    url = f"{API_PREFIX}/todos"
+    url = f"{os.environ['REST_API_URL']}/todos"
     response = requests.get(url)
     res_body = json.loads(response.text)
 

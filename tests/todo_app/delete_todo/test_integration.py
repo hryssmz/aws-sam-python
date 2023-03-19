@@ -1,15 +1,16 @@
-# integration/todo_app/test_delete_todo.py
+# todo_app/delete_todo/test_integration.py
 from http import HTTPStatus
+import os
 
 import requests
 
-from tests.integration.consts import API_PREFIX
-from tests.unit.todo_app.consts import (
+from tests.todo_app.testutils import (
     TODO_DESCRIPTION,
     TODO_NAME,
     TODO_PRIORITY,
+    create_todo,
+    list_todos,
 )
-from tests.unit.todo_app.testutils import create_todo, list_todos
 
 
 def test_delete_todo(clear_todos: None) -> None:
@@ -22,7 +23,7 @@ def test_delete_todo(clear_todos: None) -> None:
 
     assert len(list_todos()) == 1
 
-    url = f"{API_PREFIX}/todos/{id}"
+    url = f"{os.environ['REST_API_URL']}/todos/{id}"
     response = requests.delete(url)
 
     assert response.status_code == HTTPStatus.NO_CONTENT

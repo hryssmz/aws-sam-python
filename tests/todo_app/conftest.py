@@ -1,4 +1,4 @@
-# unit/todo_app/conftest.py
+# todo_app/conftest.py
 import pytest
 
 from tests.todo_app.testutils import get_todo_table, list_todos
