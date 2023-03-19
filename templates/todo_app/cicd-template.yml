@@ -155,21 +155,14 @@ Resources:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
           - Sid: ArtifactsBucketObjectsAccess
             Effect: Allow
             Action:
               - s3:GetObject
               - s3:GetObjectVersion
               - s3:PutObject
-            Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
+            Resource:
+              - Fn::Sub: ${ArtifactsBucket.Arn}/*
           - Sid: CodeBuildReportGroupsAccess
             Effect: Allow
             Action:
@@ -179,10 +172,6 @@ Resources:
               - codebuild:CreateReport
               - codebuild:UpdateReport
             Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
           - Sid: DynamoDBAccess
             Effect: Allow
             Action:
@@ -376,19 +365,21 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: S3Access
+          - Sid: ArtifactsBucketAccess
             Effect: Allow
             Action:
               - s3:GetBucketAcl
               - s3:GetBucketLocation
+            Resource:
+              - Fn::GetAtt: ArtifactsBucket.Arn
+          - Sid: ArtifactsBucketObjectsAccess
+            Effect: Allow
+            Action:
               - s3:GetObject
               - s3:GetObjectVersion
               - s3:PutObject
-            Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
+            Resource:
+              - Fn::Sub: ${ArtifactsBucket.Arn}/*
           - Sid: CodeCommitAccess
             Effect: Allow
             Action:
@@ -397,21 +388,17 @@ Resources:
               - codecommit:GetCommit
               - codecommit:GetUploadArchiveStatus
               - codecommit:UploadArchive
-            Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
+            Resource:
+              - Fn::GetAtt: CodeCommitRepository.Arn
           - Sid: CodeBuildAccess
             Effect: Allow
             Action:
               - codebuild:StartBuild
               - codebuild:BatchGetBuilds
-            Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
+            Resource:
+              - Fn::GetAtt: BuildAPIProject.Arn
+              - Fn::GetAtt: UnitTestAPIProject.Arn
+              - Fn::GetAtt: IntegrationTestAPIProject.Arn
           - Sid: CloudFormationAccess
             Effect: Allow
             Action:
@@ -708,11 +695,8 @@ Resources:
             Effect: Allow
             Action:
               - codepipeline:StartPipelineExecution
-            Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
+            Resource:
+              - Fn::Sub: arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}
 
   StartPipelineFunctionRole:
     Type: AWS::IAM::Role
