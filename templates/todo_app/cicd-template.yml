@@ -28,82 +28,36 @@ Parameters:
     Description: Path for the CloudFormation template configuration file
     Default: template-configuration.json
 
-  CicdTemplatePath:
-    Type: String
-    Description: Path for the CI/CD CloudFormation template file
-    # Default: "" # don't update CI/CD stack
-    Default: templates/todo_app/cicd-template.yml
-
   InfraTemplatePath:
     Type: String
     Description: Path for the infra CloudFormation template file
     # Default: "" # don't update infra stack
     Default: templates/todo_app/infra-template.yml
 
+  CicdTemplatePath:
+    Type: String
+    Description: Path for the CI/CD CloudFormation template file
+    Default: templates/todo_app/cicd-template.yml
+
   AppTemplatePath:
     Type: String
     Description: Path for the app CloudFormation template file
-    Default: "" # don't build and deploy app
-    # Default: templates/todo_app/template.yml
+    Default: templates/todo_app/template.yml
 
   BuildSpecPath:
     Type: String
     Description: CodeBuild buildspec path for building
-    Default: "" # don't build and deploy app
-    # Default: buildspecs/todo_app/buildspec.yml
+    Default: buildspecs/todo_app/buildspec.yml
 
   UnitTestBuildSpecPath:
     Type: String
     Description: CodeBuild buildspec file for unit test
-    # Default: "" # don't run unit tests
     Default: buildspecs/todo_app/buildspec_ut.yml
 
   IntegrationTestBuildSpecPath:
     Type: String
     Description: CodeBuild buildspec file for integration test
-    Default: "" # don't run integration tests
-    # Default: buildspecs/todo_app/buildspec_it.yml
-
-Conditions:
-  DeployCICDCondition:
-    Fn::Not:
-      - Fn::Equals:
-          - Ref: CicdTemplatePath
-          - ""
-
-  DeployInfraCondition:
-    Fn::Not:
-      - Fn::Equals:
-          - Ref: InfraTemplatePath
-          - ""
-
-  DeployAppCondition:
-    Fn::And:
-      - Fn::Not:
-          - Fn::Equals:
-              - Ref: AppTemplatePath
-              - ""
-      - Fn::Not:
-          - Fn::Equals:
-              - Ref: BuildSpecPath
-              - ""
-
-  RunUnitTestsCondition:
-    Fn::And:
-      - Condition: DeployInfraCondition
-      - Fn::Not:
-          - Fn::Equals:
-              - Ref: UnitTestBuildSpecPath
-              - ""
-
-  RunIntegrationTestsCondition:
-    Fn::And:
-      - Condition: DeployInfraCondition
-      - Condition: DeployAppCondition
-      - Fn::Not:
-          - Fn::Equals:
-              - Ref: IntegrationTestBuildSpecPath
-              - ""
+    Default: buildspecs/todo_app/buildspec_it.yml
 
 Resources:
   # S3
@@ -180,11 +134,9 @@ Resources:
               - dynamodb:PutItem
               - dynamodb:UpdateItem
               - dynamodb:DeleteItem
-            Resource: "*"
-            Condition:
-              StringEquals:
-                aws:ResourceTag/ProjectName:
-                  Ref: ProjectName
+            Resource:
+              - Fn::ImportValue:
+                  Fn::Sub: ${ProjectName}-todo-table-arn
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -475,195 +427,176 @@ Resources:
                 - Name: SourceCode
               RunOrder: 1
 
-        - Fn::If:
-            - DeployCICDCondition
-            - Name: DeployCICD
-              Actions:
-                - Name: DeployCICD
-                  ActionTypeId:
-                    Category: Deploy
-                    Owner: AWS
-                    Provider: CloudFormation
-                    Version: 1
-                  Configuration:
-                    ActionMode: CREATE_UPDATE
-                    StackName:
-                      Fn::Sub: ${ProjectName}-cicd
-                    Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
-                    RoleArn:
-                      Fn::GetAtt: CloudFormationServiceRole.Arn
-                    TemplatePath:
-                      Fn::Sub: SourceCode::${CicdTemplatePath}
-                  InputArtifacts:
-                    - Name: SourceCode
-                  RunOrder: 1
-            - Ref: AWS::NoValue
-
-        - Fn::If:
-            - DeployInfraCondition
+        - Name: DeployInfra
+          Actions:
             - Name: DeployInfra
-              Actions:
-                - Name: DeployInfra
-                  Namespace: DeployInfra
-                  ActionTypeId:
-                    Category: Deploy
-                    Owner: AWS
-                    Provider: CloudFormation
-                    Version: 1
-                  Configuration:
-                    ActionMode: CREATE_UPDATE
-                    StackName:
-                      Fn::Sub: ${ProjectName}-infra
-                    Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
-                    RoleArn:
-                      Fn::GetAtt: CloudFormationServiceRole.Arn
-                    TemplatePath:
-                      Fn::Sub: SourceCode::${InfraTemplatePath}
-                  InputArtifacts:
-                    - Name: SourceCode
-                  RunOrder: 1
-            - Ref: AWS::NoValue
+              Namespace: DeployInfra
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName:
+                  Fn::Sub: ${ProjectName}-infra
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
+                TemplatePath:
+                  Fn::Sub: SourceCode::${InfraTemplatePath}
+              InputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
 
-        - Fn::If:
-            - RunUnitTestsCondition
+        - Name: DeployCICD
+          Actions:
+            - Name: DeployCICD
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName:
+                  Fn::Sub: ${ProjectName}-cicd
+                Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn:
+                  Fn::GetAtt: CloudFormationServiceRole.Arn
+                TemplatePath:
+                  Fn::Sub: SourceCode::${CicdTemplatePath}
+              InputArtifacts:
+                - Name: SourceCode
+              RunOrder: 1
+
+        - Name: UnitTestAPI
+          Actions:
             - Name: UnitTestAPI
-              Actions:
-                - Name: UnitTestAPI
-                  ActionTypeId:
-                    Category: Build
-                    Owner: AWS
-                    Provider: CodeBuild
-                    Version: 1
-                  Configuration:
-                    ProjectName:
-                      Ref: UnitTestAPIProject
-                    EnvironmentVariables:
-                      Fn::Sub: |
-                        [
-                          {
-                            "name": "APP_NAME",
-                            "value": "${AppName}"
-                          },
-                          {
-                            "name": "TODO_TABLE",
-                            "value": "#{DeployInfra.TodoTable}"
-                          }
-                        ]
-                  InputArtifacts:
-                    - Name: SourceCode
-                  OutputArtifacts:
-                    - Name: UnitTestReport
-                  RunOrder: 1
-                - Ref: AWS::NoValue
-            - Ref: AWS::NoValue
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:
+                  Ref: UnitTestAPIProject
+                EnvironmentVariables:
+                  Fn::Sub: |
+                    [
+                      {
+                        "name": "APP_NAME",
+                        "value": "${AppName}"
+                      },
+                      {
+                        "name": "TODO_TABLE",
+                        "value": "#{DeployInfra.TodoTable}"
+                      }
+                    ]
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: UnitTestReport
+              RunOrder: 1
 
-        - Fn::If:
-            - DeployAppCondition
-            - Name: BuildAPI
-              Actions:
-                - Name: BuildAPI
-                  ActionTypeId:
-                    Category: Build
-                    Owner: AWS
-                    Provider: CodeBuild
-                    Version: 1
-                  Configuration:
-                    ProjectName:
-                      Ref: BuildAPIProject
-                    EnvironmentVariables:
-                      Fn::Sub: |
-                        [
-                          {
-                            "name": "APP_NAME",
-                            "value": "${AppName}"
-                          },
-                          {
-                            "name": "S3_BUCKET",
-                            "value": "${ArtifactsBucket}",
-                          },
-                          {
-                            "name": "TEMPLATE_PATH",
-                            "value": "${AppTemplatePath}",
-                          },
-                          {
-                            "name": "PACKAGED_TEMPALTE_PATH",
-                            "value": "${PackagedTemplatePath}",
-                          },
-                          {
-                            "name": "TEMPLATE_CONFIGURATION_PATH",
-                            "value": "${TemplateConfigurationPath}",
-                          }
-                        ]
-                  InputArtifacts:
-                    - Name: SourceCode
-                  OutputArtifacts:
-                    - Name: BuildArtifacts
-                  RunOrder: 1
-            - Ref: AWS::NoValue
+        # - Name: BuildAPI
+        #   Actions:
+        #     - Name: BuildAPI
+        #       ActionTypeId:
+        #         Category: Build
+        #         Owner: AWS
+        #         Provider: CodeBuild
+        #         Version: 1
+        #       Configuration:
+        #         ProjectName:
+        #           Ref: BuildAPIProject
+        #         EnvironmentVariables:
+        #           Fn::Sub: |
+        #             [
+        #               {
+        #                 "name": "APP_NAME",
+        #                 "value": "${AppName}"
+        #               },
+        #               {
+        #                 "name": "S3_BUCKET",
+        #                 "value": "${ArtifactsBucket}",
+        #               },
+        #               {
+        #                 "name": "TEMPLATE_PATH",
+        #                 "value": "${AppTemplatePath}",
+        #               },
+        #               {
+        #                 "name": "PACKAGED_TEMPALTE_PATH",
+        #                 "value": "${PackagedTemplatePath}",
+        #               },
+        #               {
+        #                 "name": "TEMPLATE_CONFIGURATION_PATH",
+        #                 "value": "${TemplateConfigurationPath}",
+        #               }
+        #             ]
+        #       InputArtifacts:
+        #         - Name: SourceCode
+        #       OutputArtifacts:
+        #         - Name: BuildArtifacts
+        #       RunOrder: 1
 
-        - Fn::If:
-            - DeployAppCondition
-            - Name: DeployAPI
-              Actions:
-                - Name: DeployAPI
-                  Namespace: DeployAPI
-                  ActionTypeId:
-                    Category: Deploy
-                    Owner: AWS
-                    Provider: CloudFormation
-                    Version: 1
-                  Configuration:
-                    ActionMode: CREATE_UPDATE
-                    StackName:
-                      Fn::Sub: ${ProjectName}-api
-                    Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
-                    RoleArn:
-                      Fn::GetAtt: CloudFormationServiceRole.Arn
-                    TemplatePath:
-                      Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
-                    TemplateConfiguration:
-                      Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
-                  InputArtifacts:
-                    - Name: BuildArtifacts
-                  RunOrder: 1
-            - Ref: AWS::NoValue
+        # - Name: DeployAPI
+        #   Actions:
+        #     - Name: DeployAPI
+        #       Namespace: DeployAPI
+        #       ActionTypeId:
+        #         Category: Deploy
+        #         Owner: AWS
+        #         Provider: CloudFormation
+        #         Version: 1
+        #       Configuration:
+        #         ActionMode: CREATE_UPDATE
+        #         StackName:
+        #           Fn::Sub: ${ProjectName}-api
+        #         Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+        #         RoleArn:
+        #           Fn::GetAtt: CloudFormationServiceRole.Arn
+        #         TemplatePath:
+        #           Fn::Sub: BuildArtifacts::${PackagedTemplatePath}
+        #         TemplateConfiguration:
+        #           Fn::Sub: BuildArtifacts::${TemplateConfigurationPath}
+        #       InputArtifacts:
+        #         - Name: BuildArtifacts
+        #       RunOrder: 1
 
-        - Fn::If:
-            - RunIntegrationTestsCondition
-            - Name: IntegrationTestAPI
-              Actions:
-                - Name: IntegrationTestAPI
-                  ActionTypeId:
-                    Category: Build
-                    Owner: AWS
-                    Provider: CodeBuild
-                    Version: 1
-                  Configuration:
-                    ProjectName:
-                      Ref: IntegrationTestAPIProject
-                    EnvironmentVariables:
-                      Fn::Sub: |
-                        [
-                          {
-                            "name": "APP_NAME",
-                            "value": "${AppName}"
-                          },
-                          {
-                            "name": "TODO_TABLE",
-                            "value": "#{DeployInfra.TodoTable}"
-                          },
-                          {
-                            "name": "REST_API_URL",
-                            "value": "#{DeployAPI.RestApiUrl}"
-                          }
-                        ]
-                  InputArtifacts:
-                    - Name: SourceCode
-                  OutputArtifacts:
-                    - Name: IntegrationTestReport
-                  RunOrder: 1
-                - Ref: AWS::NoValue
-            - Ref: AWS::NoValue
+        # - Name: IntegrationTestAPI
+        #   Actions:
+        #     - Name: IntegrationTestAPI
+        #       ActionTypeId:
+        #         Category: Build
+        #         Owner: AWS
+        #         Provider: CodeBuild
+        #         Version: 1
+        #       Configuration:
+        #         ProjectName:
+        #           Ref: IntegrationTestAPIProject
+        #         EnvironmentVariables:
+        #           Fn::Sub: |
+        #             [
+        #               {
+        #                 "name": "APP_NAME",
+        #                 "value": "${AppName}"
+        #               },
+        #               {
+        #                 "name": "TODO_TABLE",
+        #                 "value": "#{DeployInfra.TodoTable}"
+        #               },
+        #               {
+        #                 "name": "REST_API_URL",
+        #                 "value": "#{DeployAPI.RestApiUrl}"
+        #               }
+        #             ]
+        #       InputArtifacts:
+        #         - Name: SourceCode
+        #       OutputArtifacts:
+        #         - Name: IntegrationTestReport
+        #       RunOrder: 1
+
       Tags:
         - Key: ProjectName
           Value:
