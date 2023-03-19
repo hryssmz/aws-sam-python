@@ -23,7 +23,7 @@ reports:
     files:
       - tests/report/clover/hello_world_app/*.xml
     discard-paths: yes
-    file-format: CLOVERXML
+    file-format: COBERTURAXML
 
   test:
     files:

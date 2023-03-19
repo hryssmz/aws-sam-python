@@ -2,16 +2,16 @@
 pytest_lambda() {
     pytest \
         --cov-report=term \
-        --cov-report="html:tests/report/htmlcov/$1" \
-        --cov-report="xml:tests/report/clover/$1.xml" \
-        --cov="functions/$1" \
-        --override-ini="pythonpath=functions/$1 ." \
-        --junitxml="tests/report/junit/$1.xml" \
-        "tests/unit/$1"
+        --cov-report="html:tests/$1/report/htmlcov/$2" \
+        --cov-report="xml:tests/$1/report/clover/$2.xml" \
+        --cov="functions/$1/$2" \
+        --override-ini="pythonpath=functions/$1/$2 ." \
+        --junitxml="tests/$1/report/junit/$2.xml" \
+        "tests/$1/$2/test_unit.py"
 }
 
 pytest_hello_world_app() {
-    pytest_lambda hello_world_app/hello_world
+    pytest_lambda hello_world_app hello_world
 }
 
 pytest_hello_world_app

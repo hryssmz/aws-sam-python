@@ -3,14 +3,9 @@ pytest_lambda() {
     pytest \
         --cov-report=term \
         --cov-report="html:tests/unit/$1/htmlcov" \
-        --cov-report="xml:tests/unit/$1/coverage.xml" \
         --cov="functions/$1" \
         --override-ini="pythonpath=functions/$1 ." \
         "tests/unit/$1" || exit 1
-}
-
-pytest_hello_world_app() {
-    pytest_lambda hello_world_app/hello_world
 }
 
 pytest_s3_app() {
@@ -28,6 +23,5 @@ pytest_todo_app() {
     pytest_lambda todo_app/get_todo
 }
 
-pytest_hello_world_app
-# pytest_s3_app
+pytest_s3_app
 # pytest_todo_app
