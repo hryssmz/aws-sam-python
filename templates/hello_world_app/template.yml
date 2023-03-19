@@ -92,7 +92,7 @@ Resources:
   HelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/hello_world_app/hello_world
+      CodeUri: ../../functions/hello_world_app/hello_world
       FunctionName:
         Fn::Sub: ${ProjectName}-hello-world
       Description: HelloWorld function
