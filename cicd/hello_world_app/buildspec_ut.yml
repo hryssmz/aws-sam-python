@@ -28,7 +28,7 @@ reports:
     files:
       - "*.xml"
     base-directory: tests/${APP_NAME}/report/clover
-    file-format: COBERTURAXML
+    file-format: JACOCOXML
 
   test:
     files:

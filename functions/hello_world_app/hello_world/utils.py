@@ -21,3 +21,7 @@ def create_logger(name: str, level: int = logging.INFO) -> logging.Logger:
 
 def json_serialize(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False)
+
+
+def not_use() -> None:
+    pass

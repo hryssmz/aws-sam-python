@@ -22,8 +22,3 @@ def test_ok() -> None:
     assert res_body["message"] == "Hello World!"
 
     jsonschema.validate(res_body, HELLO_WORLD_RESPONSE)
-
-
-def test_bad() -> None:
-    a = 0
-    assert a == 1
